@@ -24,7 +24,7 @@ export class SyncController {
     private readonly dbService: DbService
   ) {}
 
-  @Get("retroachievements/fullSync")
+  @Get("retroachievements/full")
   async syncRetroachievementsAll() {
     const allTrackedAccounts = await this.dbService.trackedAccount.findMany({
       where: {

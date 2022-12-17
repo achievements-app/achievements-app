@@ -46,7 +46,10 @@ export class SyncProcessor {
     this.#logger.logFailedJob(job.name, job.id, job.data, error);
   }
 
-  @Process(syncJobNames.syncRetroachievementsUserGames)
+  @Process({
+    name: syncJobNames.syncRetroachievementsUserGames,
+    concurrency: 3
+  })
   async processSyncRetroachievementsUserGames(job: Job<SyncUserGamesPayload>) {
     // Get all the user games recorded on RA, as well as what games we
     // do and don't currently have stored in our database. Games that we
@@ -124,10 +127,6 @@ export class SyncProcessor {
         job.data.storedGameId,
         job.data.trackedAccount,
         job.data.serviceTitleId
-      );
-    } else {
-      this.#logger.log(
-        `No work needed for ${job.data.trackedAccount.accountUserName} ${job.data.serviceTitleId}`
       );
     }
   }

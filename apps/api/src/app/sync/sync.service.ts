@@ -169,17 +169,56 @@ export class SyncService {
         (userGame) => userGame.gameId === Number(serviceTitleId)
       );
 
-      const payload: SyncUserGameProgressPayload = {
-        trackedAccount,
-        serviceTitleId,
-        storedGameId: targetStoredGame.id,
-        serviceReportedEarnedAchievementCount: targetUserGame.numAwarded
-      };
+      // To keep the queue optimized, we'll determine if work is actually
+      // needed before queueing up a job.
+      const isSyncUserGameProgressNeeded =
+        await this.getIsRetroachievementsSyncUserGameProgressNeeded(
+          trackedAccount,
+          targetStoredGame,
+          targetUserGame
+        );
 
-      this.syncQueue.add(
-        syncJobNames.syncRetroachievementsUserGameProgress,
-        payload
-      );
+      if (isSyncUserGameProgressNeeded) {
+        const payload: SyncUserGameProgressPayload = {
+          trackedAccount,
+          serviceTitleId,
+          storedGameId: targetStoredGame.id,
+          serviceReportedEarnedAchievementCount: targetUserGame.numAwarded
+        };
+
+        this.syncQueue.add(
+          syncJobNames.syncRetroachievementsUserGameProgress,
+          payload
+        );
+      } else {
+        this.#logger.log(
+          `No work needed for ${trackedAccount.accountUserName} ${serviceTitleId}`
+        );
+      }
     }
+  }
+
+  private async getIsRetroachievementsSyncUserGameProgressNeeded(
+    trackedAccount: TrackedAccount,
+    storedGame: Game,
+    serviceUserGame: UserGameCompletion
+  ) {
+    // Work is needed if:
+    // (a) There is no UserGameProgress entity for the game, or
+    // (b) The number of achievements earned reported by RA does not
+    // match the number of achievements earned we've stored internally.
+
+    const foundUserGameProgress =
+      await this.dbService.findCompleteUserGameProgress(
+        trackedAccount.id,
+        storedGame.id
+      );
+
+    const doAchievementCountsMatch = foundUserGameProgress
+      ? foundUserGameProgress.earnedAchievements.length ===
+        serviceUserGame.numAwarded
+      : false;
+
+    return !foundUserGameProgress || !doAchievementCountsMatch;
   }
 }

@@ -146,7 +146,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
           createMany: {
             data: gameAchievements.map((gameAchievement) => ({
               name: gameAchievement.title,
-              description: gameAchievement.description,
+              description: String(gameAchievement.description),
               serviceAchievementId: String(gameAchievement.id),
               vanillaPoints: gameAchievement.points,
               ratioPoints: gameAchievement.trueRatio,
