@@ -1,7 +1,14 @@
 {
   "root": true,
   "ignorePatterns": ["**/*"],
-  "plugins": ["@nrwl/nx"],
+  "plugins": ["@nrwl/nx", "unicorn", "simple-import-sort", "import"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:sonarjs/recommended",
+    "plugin:security/recommended",
+    "prettier"
+  ],
   "overrides": [
     {
       "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
@@ -18,7 +25,57 @@
               }
             ]
           }
-        ]
+        ],
+
+        "curly": "error",
+        "no-console": "error",
+        "object-shorthand": "error",
+        "one-var": ["error", "never"],
+        "eqeqeq": "error",
+
+        "@typescript-eslint/consistent-type-imports": "error",
+        "@typescript-eslint/explicit-module-boundary-types": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/no-var-requires": "off",
+
+        "import/first": "error",
+        "import/newline-after-import": "error",
+        "import/no-duplicates": "error",
+
+        "simple-import-sort/exports": "error",
+        "simple-import-sort/imports": [
+          "error",
+          {
+            "groups": [
+              // Side effect imports.
+              ["^\\u0000"],
+
+              // Packages.
+              // Things that start with a letter (or digit or underscore), or `@` followed by a letter.
+              ["^@?\\w"],
+
+              // Internal packages.
+              ["^(@achievements-app)(/.*|$)"],
+
+              // Absolute imports and other imports such as Vue-style `@/foo`.
+              // Anything not matched in another group.
+              ["^"],
+
+              // Relative imports.
+              // Anything that starts with a dot.
+              ["^\\."]
+            ]
+          }
+        ],
+
+        "unicorn/filename-case": "off",
+        "unicorn/no-empty-file": "off",
+        "unicorn/no-null": "off",
+        "unicorn/prefer-logical-operator-over-ternary": "error",
+        "unicorn/prefer-module": "off",
+        "unicorn/prefer-spread": "off",
+        "unicorn/prefer-switch": "off"
       }
     },
     {

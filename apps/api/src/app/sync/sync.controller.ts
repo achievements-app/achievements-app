@@ -1,16 +1,18 @@
+import { InjectQueue } from "@nestjs/bull";
 import {
   Controller,
   Get,
   HttpException,
   HttpStatus,
-  Logger,
   Param
 } from "@nestjs/common";
 import { Queue } from "bull";
-import { InjectQueue } from "@nestjs/bull";
 
-import { DbService } from "../db/db.service";
-import type { SyncUserGamesPayload } from "./models";
+import { DbService } from "@/api/db/db.service";
+import { Logger } from "@/api/shared/logger/logger.service";
+
+import type { SyncQueuePayload, SyncUserGamesPayload } from "./models";
+import { syncJobNames } from "./sync-job-names";
 
 @Controller("sync")
 export class SyncController {
@@ -18,9 +20,36 @@ export class SyncController {
 
   constructor(
     @InjectQueue("sync")
-    private readonly syncQueue: Queue,
+    private readonly syncQueue: Queue<SyncQueuePayload>,
     private readonly dbService: DbService
   ) {}
+
+  @Get("retroachievements/fullSync")
+  async syncRetroachievementsAll() {
+    const allTrackedAccounts = await this.dbService.trackedAccount.findMany({
+      where: {
+        gamingService: "RA"
+      }
+    });
+
+    for (const trackedAccount of allTrackedAccounts) {
+      const payload: SyncUserGamesPayload = {
+        trackedAccount
+      };
+
+      this.#logger.logQueueingJob(
+        syncJobNames.syncRetroachievementsUserGames,
+        payload
+      );
+      const newJob = await this.syncQueue.add(
+        syncJobNames.syncRetroachievementsUserGames,
+        payload
+      );
+      this.#logger.logQueuedJob(newJob.name, newJob.id);
+    }
+
+    return { status: "success" };
+  }
 
   @Get("retroachievements/:userName")
   async syncRetroachievementsUserName(@Param("userName") userName: string) {
@@ -28,31 +57,24 @@ export class SyncController {
       await this.dbService.findTrackedAccountByAccountUserName("RA", userName);
 
     if (!foundTrackedAccount) {
+      this.#logger.warn(`No tracked RA account for ${userName}`);
       throw new HttpException("No tracked account.", HttpStatus.NOT_FOUND);
     }
-  }
 
-  @Get()
-  async ping() {
-    const foundTrackedAccount = await this.dbService.trackedAccount.findFirst({
-      where: {
-        gamingService: "RA",
-        user: {
-          userName: "wc"
-        }
-      }
-    });
+    const payload: SyncUserGamesPayload = {
+      trackedAccount: foundTrackedAccount
+    };
 
-    if (foundTrackedAccount) {
-      const payload = { trackedAccount: foundTrackedAccount };
+    this.#logger.logQueueingJob(
+      syncJobNames.syncRetroachievementsUserGames,
+      payload
+    );
+    const newJob = await this.syncQueue.add(
+      syncJobNames.syncRetroachievementsUserGames,
+      payload
+    );
+    this.#logger.logQueuedJob(newJob.name, newJob.id);
 
-      this.#logger.log(
-        `QUEUEING JOB syncUserGames ${JSON.stringify(payload)}.`
-      );
-      const newJob = await this.syncQueue.add("syncUserGames", payload);
-      this.#logger.log(`QUEUED JOB ${newJob.id} ${newJob.name}.`);
-    }
-
-    return { status: "ok" };
+    return { status: "success" };
   }
 }

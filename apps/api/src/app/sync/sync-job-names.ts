@@ -1,3 +1,4 @@
 export const syncJobNames = {
-  syncUserGames: "syncUserGames"
+  syncRetroachievementsUserGames: "syncRetroachievementsUserGames",
+  syncRetroachievementsUserGameProgress: "syncRetroachievementsUserGameProgress"
 };

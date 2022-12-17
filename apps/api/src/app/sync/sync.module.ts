@@ -1,20 +1,25 @@
 import { BullModule } from "@nestjs/bull";
 import { Module } from "@nestjs/common";
 
-import { RetroachievementsModule } from "../integrations/retroachievements/retroachievements.module";
+import { DbModule } from "@/api/db/db.module";
+import { RetroachievementsModule } from "@/api/integrations/retroachievements/retroachievements.module";
+import { LoggerModule } from "@/api/shared/logger/logger.module";
+
 import { SyncController } from "./sync.controller";
 import { SyncProcessor } from "./sync.processor";
-import { DbModule } from "../db/db.module";
+import { SyncService } from "./sync.service";
 
 @Module({
   imports: [
     BullModule.registerQueue({
       name: "sync"
     }),
+
+    DbModule,
     RetroachievementsModule,
-    DbModule
+    LoggerModule
   ],
   controllers: [SyncController],
-  providers: [SyncProcessor]
+  providers: [SyncProcessor, SyncService]
 })
 export class SyncModule {}
