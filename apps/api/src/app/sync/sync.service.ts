@@ -159,66 +159,94 @@ export class SyncService {
     userGames: UserGameCompletion[],
     trackedAccount: TrackedAccount
   ) {
-    for (const serviceTitleId of serviceTitleIds) {
-      const targetStoredGame = await this.dbService.findExistingGame(
-        "RA",
-        serviceTitleId
+    const allTargetStoredGames = await this.dbService.game.findMany({
+      where: {
+        gamingService: "RA",
+        serviceTitleId: {
+          in: serviceTitleIds
+        }
+      }
+    });
+
+    const allServiceTitleIdsNeedingSync =
+      await this.getAllRetroachievementsGamesRequiringProgressSync(
+        trackedAccount,
+        allTargetStoredGames,
+        userGames
+      );
+
+    for (const serviceTitleIdNeedingSync of allServiceTitleIdsNeedingSync) {
+      const storedGame = allTargetStoredGames.find(
+        (game) => game.serviceTitleId === serviceTitleIdNeedingSync
       );
 
       const targetUserGame = userGames.find(
-        (userGame) => userGame.gameId === Number(serviceTitleId)
+        (userGame) => userGame.gameId === Number(serviceTitleIdNeedingSync)
       );
 
-      // To keep the queue optimized, we'll determine if work is actually
-      // needed before queueing up a job.
-      const isSyncUserGameProgressNeeded =
-        await this.getIsRetroachievementsSyncUserGameProgressNeeded(
-          trackedAccount,
-          targetStoredGame,
-          targetUserGame
-        );
+      const payload: SyncUserGameProgressPayload = {
+        trackedAccount,
+        serviceTitleId: serviceTitleIdNeedingSync,
+        storedGameId: storedGame.id,
+        serviceReportedEarnedAchievementCount: targetUserGame.numAwarded
+      };
 
-      if (isSyncUserGameProgressNeeded) {
-        const payload: SyncUserGameProgressPayload = {
-          trackedAccount,
-          serviceTitleId,
-          storedGameId: targetStoredGame.id,
-          serviceReportedEarnedAchievementCount: targetUserGame.numAwarded
-        };
-
-        this.syncQueue.add(
-          syncJobNames.syncRetroachievementsUserGameProgress,
-          payload
-        );
-      } else {
-        this.#logger.log(
-          `No work needed for ${trackedAccount.accountUserName} ${serviceTitleId}`
-        );
-      }
+      this.syncQueue.add(
+        syncJobNames.syncRetroachievementsUserGameProgress,
+        payload,
+        { attempts: 5, backoff: 60000 }
+      );
     }
   }
 
-  private async getIsRetroachievementsSyncUserGameProgressNeeded(
+  private async getAllRetroachievementsGamesRequiringProgressSync(
     trackedAccount: TrackedAccount,
-    storedGame: Game,
-    serviceUserGame: UserGameCompletion
+    storedGames: Game[],
+    serviceUserGames: UserGameCompletion[]
   ) {
-    // Work is needed if:
-    // (a) There is no UserGameProgress entity for the game, or
-    // (b) The number of achievements earned reported by RA does not
-    // match the number of achievements earned we've stored internally.
+    const allAccountUserGameProgresses =
+      await this.dbService.userGameProgress.findMany({
+        where: {
+          trackedAccountId: trackedAccount.id,
+          gameId: {
+            in: storedGames.map((game) => game.id)
+          }
+        },
+        include: {
+          game: true,
+          earnedAchievements: true
+        }
+      });
 
-    const foundUserGameProgress =
-      await this.dbService.findCompleteUserGameProgress(
-        trackedAccount.id,
-        storedGame.id
+    const serviceTitleIdsNeedingSync: string[] = [];
+
+    for (const serviceUserGame of serviceUserGames) {
+      // Work is needed if:
+      // (a) There is no UserGameProgress entity for the game, or
+      // (b) The number of achievements earned reported by RA does not
+      // match the number of achievements earned we've stored internally.
+
+      const foundUserGameProgress = allAccountUserGameProgresses.find(
+        (userGameProgress) =>
+          userGameProgress.game.serviceTitleId ===
+          String(serviceUserGame.gameId)
       );
 
-    const doAchievementCountsMatch = foundUserGameProgress
-      ? foundUserGameProgress.earnedAchievements.length ===
-        serviceUserGame.numAwarded
-      : false;
+      const doAchievementCountsMatch = foundUserGameProgress
+        ? foundUserGameProgress.earnedAchievements.length ===
+          serviceUserGame.numAwarded
+        : false;
 
-    return !foundUserGameProgress || !doAchievementCountsMatch;
+      const needsSync = !foundUserGameProgress || !doAchievementCountsMatch;
+      if (needsSync) {
+        serviceTitleIdsNeedingSync.push(String(serviceUserGame.gameId));
+      } else {
+        this.#logger.log(
+          `No work needed for ${trackedAccount.accountUserName} ${serviceUserGame.gameId}`
+        );
+      }
+    }
+
+    return serviceTitleIdsNeedingSync;
   }
 }

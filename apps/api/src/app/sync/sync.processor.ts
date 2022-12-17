@@ -48,7 +48,7 @@ export class SyncProcessor {
 
   @Process({
     name: syncJobNames.syncRetroachievementsUserGames,
-    concurrency: 3
+    concurrency: 1
   })
   async processSyncRetroachievementsUserGames(job: Job<SyncUserGamesPayload>) {
     // Get all the user games recorded on RA, as well as what games we
