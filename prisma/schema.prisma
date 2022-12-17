@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,12 +8,36 @@ datasource db {
 }
 
 model Game {
-  id             String        @id @default(uuid())
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  name           String
-  serviceTitleId String
-  gamingService  GamingService
+  id                   String             @id @default(uuid())
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  name                 String
+  gamingService        GamingService
+  serviceTitleId       String
+  gamePlatforms        String[]
+  achievements         GameAchievement[]
+  gameProgressEntities UserGameProgress[]
+
+  @@unique([gamingService, serviceTitleId])
+}
+
+model GameAchievement {
+  id                      String   @id @default(uuid())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  serviceAchievementId    String
+  name                    String
+  description             String?
+  vanillaPoints           Int?
+  ratioPoints             Int?
+  sourceImageUrl          String?
+  serviceEarnedPercentage Float?
+
+  game               Game                    @relation(fields: [gameId], references: [id])
+  gameId             String
+  earnedAchievements UserEarnedAchievement[]
+
+  @@unique([gameId, serviceAchievementId])
 }
 
 model User {
@@ -29,6 +50,33 @@ model User {
   trackedAccounts TrackedAccount[]
 }
 
+model UserGameProgress {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  earnedAchievements UserEarnedAchievement[]
+
+  game             Game           @relation(fields: [gameId], references: [id])
+  gameId           String
+  trackedAccount   TrackedAccount @relation(fields: [trackedAccountId], references: [id])
+  trackedAccountId String
+
+  @@unique([trackedAccountId, gameId])
+}
+
+model UserEarnedAchievement {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  earnedOn  DateTime
+
+  achievement          GameAchievement  @relation(fields: [gameAchievementId], references: [id])
+  gameAchievementId    String
+  gameProgressEntity   UserGameProgress @relation(fields: [gameProgressEntityId], references: [id])
+  gameProgressEntityId String
+}
+
 model TrackedAccount {
   id              String        @id @default(uuid())
   createdAt       DateTime      @default(now())
@@ -36,8 +84,12 @@ model TrackedAccount {
   gamingService   GamingService
   accountUserName String
 
-  User   User   @relation(fields: [userId], references: [id])
+  gameProgressEntities UserGameProgress[]
+
+  user   User   @relation(fields: [userId], references: [id])
   userId String
+
+  @@unique([gamingService, accountUserName])
 }
 
 enum GamingService {

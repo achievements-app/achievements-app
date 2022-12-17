@@ -1,48 +1,24 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Queue } from "bull";
 import { InjectQueue } from "@nestjs/bull";
+import { Queue } from "bull";
 
 import { retroachievementsJobNames as jobNames } from "./retroachievements-job-names";
-import { RetroachievementsDataService } from "./retroachievements-data.service";
-import type { LoadAllUserGamesPayload } from "./models";
+import type { LoadAllUserGamesPayload, SyncAccountPayload } from "./models";
 
 @Injectable()
 export class RetroachievementsService {
-  #logger = new Logger(RetroachievementsService.name);
-
   constructor(
     @InjectQueue("retroachievements")
-    private readonly retroachievementsQueue: Queue,
-    private readonly dataService: RetroachievementsDataService
+    private readonly retroachievementsQueue: Queue
   ) {}
 
-  async loadAllGamesForUser(targetUserName: string) {
-    const allUserGames = await this.dataService.fetchAllUserGames(
-      targetUserName
-    );
-
-    return allUserGames;
-
-    // const allUserGameProgress = await this.dataService.fetchAllUserGameProgress(
-    //   targetUserName,
-    //   allUserGames.map((game) => game.gameId)
-    // );
-
-    // return allUserGameProgress;
-  }
-
-  async queueLoadUserGames(targetUserName: string) {
+  async syncAccount(targetUserName: string) {
+    // Start by getting all the account's games.
     const payload: LoadAllUserGamesPayload = { targetUserName };
-
-    this.#logger.log(
-      `QUEUEING JOB ${jobNames.loadAllUserGames} ${JSON.stringify(payload)}.`
-    );
 
     const newJob = await this.retroachievementsQueue.add(
       jobNames.loadAllUserGames,
       payload
     );
-
-    this.#logger.log(`QUEUED JOB ${newJob.id} ${newJob.name}.`);
   }
 }

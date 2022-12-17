@@ -1,4 +1,5 @@
 export const retroachievementsJobNames = {
+  syncAccount: "syncAccount",
   loadAllUserGames: "loadAllUserGames",
-  loadUserGameProgress: "loadUserGameProgress"
+  loadAllUserGameProgress: "loadAllUserGameProgress"
 };

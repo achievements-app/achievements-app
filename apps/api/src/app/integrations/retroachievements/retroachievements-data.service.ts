@@ -20,7 +20,17 @@ export class RetroachievementsDataService {
     return withoutSoftcore;
   }
 
-  async fetchUserGameProgress(targetUserName: string, gameId: number) {
-    return client.getUserProgressForGameId(targetUserName, gameId);
+  async fetchUserGameProgress(
+    targetUserName: string,
+    serviceTitleId: number | string
+  ) {
+    return client.getUserProgressForGameId(
+      targetUserName,
+      Number(serviceTitleId)
+    );
+  }
+
+  async fetchDeepGameInfo(serviceTitleId: number | string) {
+    return client.getExtendedGameInfoByGameId(Number(serviceTitleId));
   }
 }
