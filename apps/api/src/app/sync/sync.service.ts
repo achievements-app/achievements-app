@@ -27,9 +27,13 @@ export class SyncService {
   ) {
     const upsertedGames: Game[] = [];
 
+    this.#logger.log(
+      `Need to upsert ${targetServiceTitleIds.length} RA titles`
+    );
+
     for (const serviceTitleId of targetServiceTitleIds) {
       // We have to make a fetch to load all the game's achievements.
-      const { achievements } =
+      const { achievements, numDistinctPlayersHardcore } =
         await this.retroachievementsDataService.fetchDeepGameInfo(
           serviceTitleId
         );
@@ -40,7 +44,8 @@ export class SyncService {
 
       const upsertedGame = await this.dbService.upsertRetroachievementsGame(
         targetGame,
-        achievements
+        achievements,
+        numDistinctPlayersHardcore
       );
 
       upsertedGames.push(upsertedGame);
@@ -102,6 +107,9 @@ export class SyncService {
         serviceTitleId
       );
 
+    // TODO: This would be a good place to update the stored achievements
+    // for the game. It's likely they're stale, and we're already doing
+    // work on them anyway. So instead of a find, this should be an upsert.
     const allGameAchievements =
       await this.dbService.findAllStoredGameAchievements(storedGameId);
 

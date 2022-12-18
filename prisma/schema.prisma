@@ -8,13 +8,15 @@ datasource db {
 }
 
 model Game {
-  id                   String             @id @default(uuid())
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  name                 String
-  gamingService        GamingService
-  serviceTitleId       String
-  gamePlatforms        String[]
+  id               String        @id @default(uuid())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  name             String
+  gamingService    GamingService
+  serviceTitleId   String
+  gamePlatforms    String[]
+  knownPlayerCount Int?
+
   achievements         GameAchievement[]
   gameProgressEntities UserGameProgress[]
 
@@ -22,16 +24,16 @@ model Game {
 }
 
 model GameAchievement {
-  id                      String   @id @default(uuid())
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  serviceAchievementId    String
-  name                    String
-  description             String?
-  vanillaPoints           Int?
-  ratioPoints             Int?
-  sourceImageUrl          String?
-  serviceEarnedPercentage Float?
+  id                   String   @id @default(uuid())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  serviceAchievementId String
+  name                 String
+  description          String?
+  vanillaPoints        Int?
+  ratioPoints          Int?
+  sourceImageUrl       String?
+  knownEarnerCount     Int?
 
   game               Game                    @relation(fields: [gameId], references: [id])
   gameId             String

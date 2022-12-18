@@ -5,9 +5,7 @@ import { AppModule } from "./app/app.module";
 import { DbService } from "./app/shared/db/db.service";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    logger: ["error"]
-  });
+  const app = await NestFactory.create(AppModule);
 
   const globalPrefix = "api";
   app.setGlobalPrefix(globalPrefix);

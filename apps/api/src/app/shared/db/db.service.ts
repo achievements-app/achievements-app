@@ -122,7 +122,8 @@ export class DbService extends PrismaClient implements OnModuleInit {
 
   async upsertRetroachievementsGame(
     retroachievementsGame: UserGameCompletion,
-    gameAchievements: RaAchievement[]
+    gameAchievements: RaAchievement[],
+    playerCount = 0
   ) {
     this.#logger.log(
       `Upserting RA title ${retroachievementsGame.gameId} ${retroachievementsGame.title} with ${gameAchievements.length} achievements`
@@ -140,6 +141,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
         gamingService: "RA",
         name: retroachievementsGame.title,
         serviceTitleId: String(retroachievementsGame.gameId),
+        knownPlayerCount: playerCount,
         gamePlatforms: [retroachievementsGame.consoleName],
         achievements: {
           createMany: {
@@ -149,15 +151,16 @@ export class DbService extends PrismaClient implements OnModuleInit {
               serviceAchievementId: String(gameAchievement.id),
               vanillaPoints: gameAchievement.points,
               ratioPoints: gameAchievement.trueRatio,
-              sourceImageUrl: `https://media.retroachievements.org/Badge/${gameAchievement.badgeName}.png`
-              // TODO: serviceEarnedPercentage
+              sourceImageUrl: `https://media.retroachievements.org/Badge/${gameAchievement.badgeName}.png`,
+              knownEarnerCount: gameAchievement.numAwardedHardcore ?? 0
             })),
             skipDuplicates: true
           }
         }
       },
       update: {
-        name: retroachievementsGame.title
+        name: retroachievementsGame.title,
+        knownPlayerCount: playerCount
       }
     });
 
