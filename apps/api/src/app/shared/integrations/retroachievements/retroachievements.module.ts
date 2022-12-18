@@ -1,8 +1,8 @@
 import { BullModule } from "@nestjs/bull";
 import { Module } from "@nestjs/common";
 
-import { DbModule } from "../../db/db.module";
-import { RetroachievementsProcessor } from "./retroachievements.processor";
+import { DbModule } from "@/api/shared/db/db.module";
+
 import { RetroachievementsDataService } from "./retroachievements-data.service";
 
 @Module({
@@ -12,7 +12,7 @@ import { RetroachievementsDataService } from "./retroachievements-data.service";
     }),
     DbModule
   ],
-  providers: [RetroachievementsDataService, RetroachievementsProcessor],
+  providers: [RetroachievementsDataService],
   exports: [RetroachievementsDataService]
 })
 export class RetroachievementsModule {}

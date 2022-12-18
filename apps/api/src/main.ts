@@ -2,7 +2,7 @@ import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app/app.module";
-import { DbService } from "./app/db/db.service";
+import { DbService } from "./app/shared/db/db.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {

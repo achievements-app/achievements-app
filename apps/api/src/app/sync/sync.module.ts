@@ -1,9 +1,10 @@
 import { BullModule } from "@nestjs/bull";
 import { Module } from "@nestjs/common";
 
-import { DbModule } from "../db/db.module";
-import { RetroachievementsModule } from "../integrations/retroachievements/retroachievements.module";
-import { LoggerModule } from "../shared/logger/logger.module";
+import { DbModule } from "@/api/shared/db/db.module";
+import { RetroachievementsModule } from "@/api/shared/integrations/retroachievements/retroachievements.module";
+import { LoggerModule } from "@/api/shared/logger/logger.module";
+
 import { SyncController } from "./sync.controller";
 import { SyncProcessor } from "./sync.processor";
 import { SyncService } from "./sync.service";

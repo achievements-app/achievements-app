@@ -12,7 +12,6 @@ import {
   UserGameProgress
 } from "@prisma/client";
 import {
-  Achievement,
   Achievement as RaAchievement,
   GameInfoAndUserProgress,
   UserGameCompletion
@@ -77,7 +76,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
 
   async updateExistingRetroachievementsUserGameProgress(
     existingUserGameProgress: UserGameProgress,
-    allEarnedAchievements: Achievement[],
+    allEarnedAchievements: RaAchievement[],
     allStoredAchievements: GameAchievement[]
   ) {
     this.#logger.log(

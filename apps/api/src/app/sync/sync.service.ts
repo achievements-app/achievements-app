@@ -4,9 +4,10 @@ import { Game, TrackedAccount, UserGameProgress } from "@prisma/client";
 import { Queue } from "bull";
 import { UserGameCompletion } from "retroachievements-js";
 
-import { DbService } from "../db/db.service";
-import { RetroachievementsDataService } from "../integrations/retroachievements/retroachievements-data.service";
-import { Logger } from "../shared/logger/logger.service";
+import { DbService } from "@/api/shared/db/db.service";
+import { RetroachievementsDataService } from "@/api/shared/integrations/retroachievements/retroachievements-data.service";
+import { Logger } from "@/api/shared/logger/logger.service";
+
 import { SyncQueuePayload, SyncUserGameProgressPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 
