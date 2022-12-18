@@ -9,9 +9,8 @@ import {
 } from "@nestjs/bull";
 import { type Job, Queue } from "bull";
 
-import { DbService } from "@/api/db/db.service";
-import { Logger } from "@/api/shared/logger/logger.service";
-
+import { DbService } from "../db/db.service";
+import { Logger } from "../shared/logger/logger.service";
 import { SyncUserGameProgressPayload, SyncUserGamesPayload } from "./models";
 import { SyncService } from "./sync.service";
 import { syncJobNames } from "./sync-job-names";

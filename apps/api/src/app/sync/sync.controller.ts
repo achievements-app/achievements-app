@@ -8,9 +8,8 @@ import {
 } from "@nestjs/common";
 import { Queue } from "bull";
 
-import { DbService } from "@/api/db/db.service";
-import { Logger } from "@/api/shared/logger/logger.service";
-
+import { DbService } from "../db/db.service";
+import { Logger } from "../shared/logger/logger.service";
 import type { SyncQueuePayload, SyncUserGamesPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 

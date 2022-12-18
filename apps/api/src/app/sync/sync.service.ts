@@ -4,10 +4,9 @@ import { Game, TrackedAccount, UserGameProgress } from "@prisma/client";
 import { Queue } from "bull";
 import { UserGameCompletion } from "retroachievements-js";
 
-import { DbService } from "@/api/db/db.service";
-import { RetroachievementsDataService } from "@/api/integrations/retroachievements/retroachievements-data.service";
-import { Logger } from "@/api/shared/logger/logger.service";
-
+import { DbService } from "../db/db.service";
+import { RetroachievementsDataService } from "../integrations/retroachievements/retroachievements-data.service";
+import { Logger } from "../shared/logger/logger.service";
 import { SyncQueuePayload, SyncUserGameProgressPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 
@@ -239,9 +238,12 @@ export class SyncService {
 
       const needsSync = !foundUserGameProgress || !doAchievementCountsMatch;
       if (needsSync) {
+        this.#logger.log(
+          `Work needed for ${trackedAccount.accountUserName} ${serviceUserGame.gameId}`
+        );
         serviceTitleIdsNeedingSync.push(String(serviceUserGame.gameId));
       } else {
-        this.#logger.log(
+        this.#logger.verbose(
           `No work needed for ${trackedAccount.accountUserName} ${serviceUserGame.gameId}`
         );
       }

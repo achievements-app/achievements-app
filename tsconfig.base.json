@@ -14,9 +14,7 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {
-      "@/api/*": ["apps/api/src/app/*"]
-    }
+    "paths": {}
   },
   "exclude": ["node_modules", "tmp"]
 }

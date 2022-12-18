@@ -13,11 +13,7 @@ export class RetroachievementsDataService {
     // RetroAchievements returns each game potentially twice. This is because
     // softcore and hardcore mode are treated as separate games in their DB.
     // We'll filter out the softcore entries.
-    const withoutSoftcore = userCompletedGames.filter(
-      (game) => game.hardcoreMode === 1
-    );
-
-    return withoutSoftcore;
+    return userCompletedGames.filter((game) => game.hardcoreMode === 1);
   }
 
   async fetchUserGameProgress(
