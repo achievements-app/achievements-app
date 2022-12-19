@@ -6,10 +6,10 @@
     "start": "nx serve",
     "build": "nx build",
     "test": "nx test",
-    "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset && npx ts-node tools/reset-redis.ts",
-    "db:seed": "npx ts-node prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:migrate": "nx run data-access-db:migrate",
+    "db:reset": "nx run data-access-db:reset && npx ts-node tools/reset-redis.ts",
+    "db:seed": "nx run data-access-db:seed",
+    "db:studio": "nx run data-access-db:studio"
   },
   "private": true,
   "dependencies": {

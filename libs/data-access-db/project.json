@@ -1,0 +1,52 @@
+{
+  "name": "data-access-db",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/data-access-db/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/data-access-db/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/data-access-db/jest.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma migrate dev --schema ./src/prisma/schema.prisma",
+        "cwd": "libs/data-access-db"
+      }
+    },
+    "reset": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma migrate reset --force --schema ./src/prisma/schema.prisma",
+        "cwd": "libs/data-access-db"
+      }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ts-node ./src/prisma/seed.ts",
+        "cwd": "libs/data-access-db"
+      }
+    },
+    "studio": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma studio --schema ./src/prisma/schema.prisma",
+        "cwd": "libs/data-access-db"
+      }
+    }
+  },
+  "tags": []
+}

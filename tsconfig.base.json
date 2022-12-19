@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/api/*": ["apps/api/src/app/*"]
+      "@/api/*": ["apps/api/src/app/*"],
+      "@achievements-app/data-access-db": ["libs/data-access-db/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
