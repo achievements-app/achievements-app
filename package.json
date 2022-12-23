@@ -9,7 +9,10 @@
     "db:migrate": "nx run data-access-db:migrate",
     "db:reset": "nx run data-access-db:reset && npx ts-node tools/reset-redis.ts",
     "db:seed": "nx run data-access-db:seed",
-    "db:studio": "nx run data-access-db:studio"
+    "db:studio": "nx run data-access-db:studio",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "test:api": "dotenv -e .env.test -- yarn docker:up && yarn prisma migrate deploy --schema=./libs/data-access-db/src/prisma/schema.prisma && nx test api"
   },
   "private": true,
   "dependencies": {
@@ -27,6 +30,7 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
     "@nestjs/schematics": "^9.0.0",
     "@nestjs/testing": "^9.0.0",
     "@nrwl/eslint-plugin-nx": "15.3.3",
@@ -41,7 +45,9 @@
     "@types/node": "18.7.1",
     "@typescript-eslint/eslint-plugin": "^5.36.1",
     "@typescript-eslint/parser": "^5.36.1",
+    "cross-spawn": "^7.0.3",
     "dotenv": "^16.0.3",
+    "dotenv-cli": "^6.0.0",
     "eslint": "~8.15.0",
     "eslint-config-prettier": "8.1.0",
     "eslint-import-resolver-typescript": "^3.5.2",
@@ -53,11 +59,13 @@
     "eslint-plugin-unicorn": "^45.0.2",
     "jest": "28.1.1",
     "jest-environment-jsdom": "28.1.1",
+    "npm-which": "^3.0.1",
     "nx": "15.3.3",
     "prettier": "^2.6.2",
     "prisma": "^4.7.1",
     "ts-jest": "28.0.5",
     "ts-node": "10.9.1",
+    "type-fest": "^3.4.0",
     "typescript": "~4.8.2"
   }
 }

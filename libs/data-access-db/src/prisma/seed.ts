@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import * as seedFns from "./seed-fns";
 
 const seed = async () => {

@@ -1,32 +1,34 @@
 import {
-  INestApplication,
+  type INestApplication,
   Injectable,
   Logger,
   OnModuleInit
 } from "@nestjs/common";
-import {
+import type {
   GameAchievement,
   GamingService,
-  PrismaClient,
   TrackedAccount,
   UserGameProgress
 } from "@prisma/client";
-import {
+import type {
   Achievement as RaAchievement,
   GameInfoAndUserProgress,
-  UserGameCompletion
+  UserGameCompletion as RaUserGameCompletion
 } from "retroachievements-js";
 
+import { db } from "@achievements-app/data-access-db";
+
 @Injectable()
-export class DbService extends PrismaClient implements OnModuleInit {
+export class DbService implements OnModuleInit {
+  db = db;
   #logger = new Logger(DbService.name);
 
   async onModuleInit() {
-    await this.$connect();
+    await this.db.$connect();
   }
 
   async enableShutdownHooks(app: INestApplication) {
-    this.$on("beforeExit", async () => {
+    this.db.$on("beforeExit", async () => {
       await app.close();
     });
   }
@@ -40,7 +42,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
       storedGameId
     );
 
-    const newUserGameProgress = await this.userGameProgress.create({
+    const newUserGameProgress = await this.db.userGameProgress.create({
       data: {
         gameId: storedGameId,
         trackedAccountId: trackedAccount.id,
@@ -80,12 +82,20 @@ export class DbService extends PrismaClient implements OnModuleInit {
     allStoredAchievements: GameAchievement[]
   ) {
     this.#logger.log(
-      `Updated UserGameProgress for ${existingUserGameProgress.trackedAccountId} ${existingUserGameProgress.id}`
+      `Updating UserGameProgress for ${existingUserGameProgress.trackedAccountId} ${existingUserGameProgress.id}`
     );
 
-    return await this.userGameProgress.update({
+    // Before doing anything, purge the list of achievements associated
+    // with the UserGameProgress. It's easier and faster to do this than
+    // try to filter by what's already unlocked.
+    await this.cleanUserGameProgress(existingUserGameProgress);
+
+    return await this.db.userGameProgress.update({
       where: {
         id: existingUserGameProgress.id
+      },
+      include: {
+        earnedAchievements: true
       },
       data: {
         earnedAchievements: {
@@ -104,8 +114,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
                 // TODO: is this timezone okay?
                 earnedOn: achievement.dateEarnedHardcore
               };
-            }),
-            skipDuplicates: true
+            })
           }
         }
       }
@@ -113,7 +122,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
   }
 
   async cleanUserGameProgress(userGameProgress: UserGameProgress) {
-    return await this.userEarnedAchievement.deleteMany({
+    return await this.db.userEarnedAchievement.deleteMany({
       where: {
         gameProgressEntityId: userGameProgress.id
       }
@@ -121,16 +130,15 @@ export class DbService extends PrismaClient implements OnModuleInit {
   }
 
   async upsertRetroachievementsGame(
-    retroachievementsGame: UserGameCompletion,
+    retroachievementsGame: RaUserGameCompletion,
     gameAchievements: RaAchievement[],
-    playerCount = 0
+    playerCount = 1
   ) {
     this.#logger.log(
       `Upserting RA title ${retroachievementsGame.gameId} ${retroachievementsGame.title} with ${gameAchievements.length} achievements`
     );
 
-    // We need to make a follow-up API call to get all the achievements for the game.
-    const upsertedGame = await this.game.upsert({
+    const upsertedGame = await this.db.game.upsert({
       where: {
         gamingService_serviceTitleId: {
           gamingService: "RA",
@@ -175,7 +183,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
     gamingService: GamingService,
     serviceTitleIds: string[]
   ) {
-    const foundGames = await this.game.findMany({
+    const foundGames = await this.db.game.findMany({
       where: {
         gamingService,
         serviceTitleId: {
@@ -195,7 +203,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
   }
 
   async findExistingGame(gamingService: GamingService, serviceTitleId: string) {
-    return await this.game.findUnique({
+    return await this.db.game.findUnique({
       where: {
         gamingService_serviceTitleId: {
           gamingService,
@@ -209,7 +217,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
     gamingService: GamingService,
     accountUserName: string
   ) {
-    return this.trackedAccount.findUnique({
+    return this.db.trackedAccount.findUnique({
       where: {
         gamingService_accountUserName: {
           gamingService,
@@ -223,7 +231,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
     trackedAccountId: string,
     storedGameId: string
   ) {
-    return await this.userGameProgress.findUnique({
+    return await this.db.userGameProgress.findUnique({
       where: {
         trackedAccountId_gameId: {
           trackedAccountId,
@@ -235,7 +243,7 @@ export class DbService extends PrismaClient implements OnModuleInit {
   }
 
   async findAllStoredGameAchievements(storedGameId: string) {
-    return await this.gameAchievement.findMany({
+    return await this.db.gameAchievement.findMany({
       where: {
         gameId: storedGameId
       }
