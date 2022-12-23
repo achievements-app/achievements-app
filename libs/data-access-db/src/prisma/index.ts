@@ -1,4 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 
-const db = new PrismaClient();
-export default db;
+import { enhancePrisma } from "./enhance-prisma";
+
+const EnhancedPrisma = enhancePrisma(PrismaClient);
+
+export * from "./utils";
+export * from "@prisma/client";
+
+export default new EnhancedPrisma();

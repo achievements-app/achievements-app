@@ -120,8 +120,8 @@ export class SyncProcessor {
         } reported earned achievements.
       `);
 
-      await this.dbService.cleanUserGameProgress(foundUserGameProgress);
-
+      // This will erase the existing achievements attached to
+      // the UserGameProgress entity and create an entirely new set.
       await this.syncService.updateRetroachievementsUserGameProgress(
         foundUserGameProgress,
         job.data.storedGameId,
