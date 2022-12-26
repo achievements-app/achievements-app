@@ -18,6 +18,8 @@ import type {
 
 import { db } from "@achievements-app/data-access-db";
 
+import type { XboxDeepGameInfo } from "@/api/shared/integrations/xbox/models";
+
 @Injectable()
 export class DbService implements OnModuleInit {
   db = db;
@@ -223,7 +225,7 @@ export class DbService implements OnModuleInit {
     playerCount = 1
   ) {
     this.#logger.log(
-      `Upserting RA title ${retroachievementsGame.gameId} ${retroachievementsGame.title} with ${gameAchievements.length} achievements`
+      `Upserting RA title ${retroachievementsGame.title}:${retroachievementsGame.gameId} with ${gameAchievements.length} achievements`
     );
 
     const upsertedGame = await this.db.game.upsert({
@@ -261,7 +263,52 @@ export class DbService implements OnModuleInit {
     });
 
     this.#logger.log(
-      `Upserted RA title ${retroachievementsGame.gameId} ${retroachievementsGame.title} with ${gameAchievements.length} achievements as ${upsertedGame.id}`
+      `Upserted RA title ${retroachievementsGame.title}:${retroachievementsGame.gameId} with ${gameAchievements.length} achievements as ${upsertedGame.id}`
+    );
+
+    return upsertedGame;
+  }
+
+  async upsertXboxGame(xboxGame: XboxDeepGameInfo) {
+    const gameAchievements = xboxGame.achievements;
+
+    this.#logger.log(
+      `Upserting XBOX title ${xboxGame.name}:${xboxGame.titleId} with ${gameAchievements.length} achievements`
+    );
+
+    const upsertedGame = await this.db.game.upsert({
+      where: {
+        gamingService_serviceTitleId: {
+          gamingService: "XBOX",
+          serviceTitleId: xboxGame.titleId
+        }
+      },
+      create: {
+        gamingService: "XBOX",
+        name: xboxGame.name,
+        serviceTitleId: xboxGame.titleId,
+        gamePlatforms: xboxGame.devices,
+        achievements: {
+          createMany: {
+            data: gameAchievements.map((gameAchievement) => ({
+              name: gameAchievement.name,
+              description: gameAchievement.description,
+              serviceAchievementId: gameAchievement.id,
+              vanillaPoints: gameAchievement.gamerscore,
+              sourceImageUrl: gameAchievement.imageUrl ?? undefined,
+              knownEarnerPercentage: gameAchievement.rarityPercentage
+            })),
+            skipDuplicates: true
+          }
+        }
+      },
+      update: {
+        name: xboxGame.name
+      }
+    });
+
+    this.#logger.log(
+      `Upserted XBOX title ${xboxGame.name}:${xboxGame.titleId} with ${gameAchievements.length} achievements as ${upsertedGame.id}`
     );
 
     return upsertedGame;

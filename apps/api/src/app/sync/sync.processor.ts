@@ -154,7 +154,19 @@ export class SyncProcessor {
       job.data.trackedAccount.accountUserName
     );
 
-    // TODO: Every game that's missing, fetch from XBOX.
-    // Can we fetch multiple games in a single query?
+    // Add all the missing games and their achievements to our DB.
+    const newlyAddedGames = await this.syncService.addXboxTitlesToDb(
+      userXuid,
+      missingGameServiceTitleIds,
+      allUserGames
+    );
+
+    // For every game we just added, we'll want to also sync
+    // the user's progress for that game.
+    const serviceTitleIdsToSyncUserProgress = [
+      ...newlyAddedGames.map((game) => game.serviceTitleId),
+      ...existingGameServiceTitleIds
+    ];
+    // TODO
   }
 }

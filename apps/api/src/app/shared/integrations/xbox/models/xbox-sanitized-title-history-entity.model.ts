@@ -3,8 +3,8 @@
 
 export interface XboxSanitizedTitleHistoryEntity {
   name: string;
-  platforms: string[];
   titleId: number;
+  titleKind: "legacy" | "modern";
   totalPossibleGamerscore: number;
   totalUnlockedGamerscore: number;
 }

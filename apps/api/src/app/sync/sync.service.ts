@@ -9,6 +9,7 @@ import { RetroachievementsDataService } from "@/api/shared/integrations/retroach
 import { XboxDataService } from "@/api/shared/integrations/xbox/xbox-data.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
+import { XboxSanitizedTitleHistoryEntity } from "../shared/integrations/xbox/models";
 import { SyncQueuePayload, SyncUserGameProgressPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 
@@ -23,6 +24,11 @@ export class SyncService {
     private readonly dbService: DbService
   ) {}
 
+  /**
+   * Given a set of UserGameCompletion entities retrieved from the
+   * RetroAchievements API, fetch the list of achievements for the
+   * game and then store the game and its achievements in our DB.
+   */
   async addRetroachievementsTitlesToDb(
     targetServiceTitleIds: string[],
     allUserGames: UserGameCompletion[]
@@ -54,6 +60,43 @@ export class SyncService {
     }
 
     this.#logger.log(`Upserted ${upsertedGames.length} RA titles`);
+
+    return upsertedGames;
+  }
+
+  async addXboxTitlesToDb(
+    userXuid: string,
+    targetServiceTitleIds: string[],
+    allUserGames: XboxSanitizedTitleHistoryEntity[]
+  ) {
+    const upsertedGames: Game[] = [];
+
+    const targetUserGames = allUserGames.filter((userGame) =>
+      targetServiceTitleIds.includes(String(userGame.titleId))
+    );
+    this.#logger.log(`Need to upsert ${targetUserGames.length} XBOX titles`);
+
+    for (const targetUserGame of targetUserGames) {
+      try {
+        const deepGameInfo = await this.xboxDataService.fetchDeepGameInfo(
+          userXuid,
+          targetUserGame
+        );
+
+        const upsertedGame = await this.dbService.upsertXboxGame(deepGameInfo);
+
+        upsertedGames.push(upsertedGame);
+
+        // TODO: When we fetch these games, Xbox is also returning the progress.
+        // We should make sure we don't need to do subsequent fetches for the progress
+        // to save the API some effort.
+      } catch (error) {
+        this.#logger.error(
+          `Could not fetch XBOX game ${targetUserGame.name}:${targetUserGame.titleId}`,
+          error
+        );
+      }
+    }
 
     return upsertedGames;
   }

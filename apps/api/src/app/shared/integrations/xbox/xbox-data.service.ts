@@ -9,16 +9,84 @@ import dayjs from "dayjs";
 import { Logger } from "@/api/shared/logger/logger.service";
 
 import type {
+  FetchXboxTitleAchievementsResponse,
+  FetchXboxTitleMetadataResponse,
+  XboxDeepGameInfo,
+  XboxLegacyAchievementEntity,
   XboxLegacyTitleHistoryEntity,
+  XboxModernAchievementEntity,
   XboxModernTitleHistoryEntity,
+  XboxSanitizedAchievementEntity,
   XboxSanitizedTitleHistoryEntity
 } from "./models";
+import { fetchTitleAchievements } from "./queries/fetchTitleAchievements";
 import { fetchTitleHistoryByXuid } from "./queries/fetchTitleHistoryByXuid";
+import { fetchTitleMetadata } from "./queries/fetchTitleMetadata";
+import { buildLegacyAchievementImageUrl } from "./utils/buildLegacyAchievementImageUrl";
 
 @Injectable()
 export class XboxDataService {
   #currentAuthorization: Readonly<CredentialsAuthenticateInitialResponse>;
   #logger = new Logger(XboxDataService.name);
+
+  async fetchDeepGameInfo(
+    xuid: string,
+    userGame: XboxSanitizedTitleHistoryEntity
+  ): Promise<XboxDeepGameInfo> {
+    // Make these calls at the same time to improve performance.
+    const parallelApiCalls = [
+      this.fetchTitleMetadata(xuid, String(userGame.titleId)),
+      this.fetchTitleAchievementsForTitleId(
+        xuid,
+        userGame.titleId,
+        userGame.titleKind
+      )
+    ];
+
+    const [titleMetadata, titleAchievements] = (await Promise.all(
+      parallelApiCalls
+    )) as [FetchXboxTitleMetadataResponse, XboxSanitizedAchievementEntity[]];
+
+    return {
+      ...titleMetadata.titles[0],
+      achievements: titleAchievements
+    };
+  }
+
+  /**
+   * Given a user's XUID and a game's titleId, returns metadata about
+   * that game. This only fetches high-level metadata about the game.
+   * This call _does not_ fetch an achievement list.
+   */
+  async fetchTitleMetadata(xuid: string, titleId: string) {
+    const authorization = await this.#useXboxAuthorization();
+    return await fetchTitleMetadata({ xuid, titleId }, authorization);
+  }
+
+  /**
+   * Given an Xbox title ID, probably retrieved via
+   * `fetchCompleteTitleHistoryByXuid()`, retrieve the
+   * complete  list of achievements for that title.
+   */
+  async fetchTitleAchievementsForTitleId(
+    xuid: string,
+    titleId: number,
+    titleKind: "legacy" | "modern"
+  ): Promise<XboxSanitizedAchievementEntity[]> {
+    const authorization = await this.#useXboxAuthorization();
+
+    const {
+      achievements
+    }: FetchXboxTitleAchievementsResponse<
+      XboxLegacyAchievementEntity | XboxModernAchievementEntity
+    > = await fetchTitleAchievements(
+      { xuid, titleId },
+      authorization,
+      titleKind as any
+    );
+
+    return achievements.map(this.#sanitizeTitleAchievementEntity);
+  }
 
   /**
    * Given a user's XUID, fetch their complete list of titles on
@@ -36,13 +104,9 @@ export class XboxDataService {
     // we have to fetch both the Xbox 360 title history and post-Xbox 360 title history.
     // We'll refer to these as "legacy" and "modern".
     const [userLegacyTitleHistory, userModernTitleHistory] = await Promise.all([
-      fetchTitleHistoryByXuid(xuid, authorization, "legacy"),
-      fetchTitleHistoryByXuid(xuid, authorization, "modern")
+      fetchTitleHistoryByXuid({ xuid }, authorization, "legacy"),
+      fetchTitleHistoryByXuid({ xuid }, authorization, "modern")
     ]);
-
-    // TODO: We can determine
-    // which titles are missing and present in the DB. Once we know which titles
-    // are missing and present, we can fetch the ones that are missing.
 
     return [
       ...userModernTitleHistory.titles.map(this.#sanitizeTitleHistoryEntity),
@@ -82,6 +146,57 @@ export class XboxDataService {
   }
 
   /**
+   * Given a legacy or modern title achievement entity fetched
+   * via the `fetchTitleAchievements()` query function, map the entity
+   * to the `XboxSanitizedAchievementEntity` interface. This gives us
+   * a single common interface to work with, as opposed to juggling
+   * two different schemas around from different achievement eras.
+   */
+  #sanitizeTitleAchievementEntity(
+    titleAchievementEntity:
+      | XboxLegacyAchievementEntity
+      | XboxModernAchievementEntity
+  ): XboxSanitizedAchievementEntity {
+    let possibleGamerscore = 0;
+    let imageUrl: string | null = null;
+
+    const isModernAchievementEntity =
+      "serviceConfigId" in titleAchievementEntity;
+
+    if (isModernAchievementEntity) {
+      const foundGamerscoreReward = titleAchievementEntity.rewards.find(
+        (reward) => reward.type === "Gamerscore"
+      );
+      if (foundGamerscoreReward) {
+        possibleGamerscore = Number(foundGamerscoreReward.value);
+      }
+
+      const foundIconMediaAsset = titleAchievementEntity.mediaAssets.find(
+        (mediaAsset) => mediaAsset.type === "Icon"
+      );
+      if (foundIconMediaAsset) {
+        imageUrl = foundIconMediaAsset.url;
+      }
+    } else {
+      possibleGamerscore = titleAchievementEntity.gamerscore;
+
+      imageUrl = buildLegacyAchievementImageUrl(
+        titleAchievementEntity.titleId,
+        titleAchievementEntity.imageId
+      );
+    }
+
+    return {
+      imageUrl,
+      name: titleAchievementEntity.name,
+      id: String(titleAchievementEntity.id),
+      description: titleAchievementEntity.description,
+      gamerscore: possibleGamerscore,
+      rarityPercentage: titleAchievementEntity.rarity.currentPercentage
+    };
+  }
+
+  /**
    * Given a legacy or modern title history entity fetched via
    * the `fetchTitleHistoryByXuid()` query function, map the entity
    * to the `XboxSanitizedTitleHistoryEntity` interface. This gives us
@@ -93,14 +208,12 @@ export class XboxDataService {
       | XboxLegacyTitleHistoryEntity
       | XboxModernTitleHistoryEntity
   ): XboxSanitizedTitleHistoryEntity {
-    const platforms: string[] = [];
     let totalPossibleGamerscore = 0;
     let totalUnlockedGamerscore = 0;
 
     const isModernTitleHistoryEntity = "platform" in titleHistoryEntity;
 
     if (isModernTitleHistoryEntity) {
-      platforms.push(titleHistoryEntity.platform);
       totalPossibleGamerscore = titleHistoryEntity.maxGamerscore;
       totalUnlockedGamerscore = titleHistoryEntity.currentGamerscore;
     } else {
@@ -109,11 +222,11 @@ export class XboxDataService {
     }
 
     return {
-      platforms,
       totalPossibleGamerscore,
       totalUnlockedGamerscore,
       name: titleHistoryEntity.name,
-      titleId: titleHistoryEntity.titleId
+      titleId: titleHistoryEntity.titleId,
+      titleKind: isModernTitleHistoryEntity ? "modern" : "legacy"
     };
   }
 

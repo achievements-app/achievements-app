@@ -24,16 +24,17 @@ model Game {
 }
 
 model GameAchievement {
-  id                   String   @id @default(uuid())
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  serviceAchievementId String
-  name                 String
-  description          String?
-  vanillaPoints        Int?
-  ratioPoints          Int?
-  sourceImageUrl       String?
-  knownEarnerCount     Int?
+  id                    String   @id @default(uuid())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  serviceAchievementId  String
+  name                  String
+  description           String?
+  vanillaPoints         Int?
+  ratioPoints           Int?
+  sourceImageUrl        String?
+  knownEarnerCount      Int?
+  knownEarnerPercentage Float?
 
   game               Game                    @relation(fields: [gameId], references: [id])
   gameId             String

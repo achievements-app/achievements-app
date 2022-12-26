@@ -5,9 +5,9 @@ import {
 import urlcat from "urlcat";
 
 import type {
+  FetchXboxTitleHistoryResponse,
   XboxLegacyTitleHistoryEntity,
-  XboxModernTitleHistoryEntity,
-  XboxTitleHistoryResponse
+  XboxModernTitleHistoryEntity
 } from "../models";
 
 // Based on the variant, the return type will change.
@@ -15,35 +15,35 @@ import type {
 // why we have some crazy-looking exports in this file.
 
 export async function fetchTitleHistoryByXuid(
-  xuid: string,
+  payload: { xuid: string },
   authorization: XBLAuthorization,
   variant: "legacy"
-): Promise<XboxTitleHistoryResponse<XboxLegacyTitleHistoryEntity>>;
+): Promise<FetchXboxTitleHistoryResponse<XboxLegacyTitleHistoryEntity>>;
 
 export async function fetchTitleHistoryByXuid(
-  xuid: string,
+  payload: { xuid: string },
   authorization: XBLAuthorization,
   variant: "modern"
-): Promise<XboxTitleHistoryResponse<XboxModernTitleHistoryEntity>>;
+): Promise<FetchXboxTitleHistoryResponse<XboxModernTitleHistoryEntity>>;
+
+// --- Implementation begins below this line. ---
 
 export async function fetchTitleHistoryByXuid(
-  xuid: string,
+  payload: { xuid: string },
   authorization: XBLAuthorization,
   variant: "modern" | "legacy"
 ): Promise<
-  XboxTitleHistoryResponse<
+  FetchXboxTitleHistoryResponse<
     XboxLegacyTitleHistoryEntity | XboxModernTitleHistoryEntity
   >
 > {
   const apiBaseUrl = "https://achievements.xboxlive.com";
   const requestUrl = urlcat(apiBaseUrl, "/users/xuid(:xuid)/history/titles", {
-    xuid,
+    xuid: payload.xuid,
     maxItems: 9000
   });
 
-  return await xblCall(
-    { url: requestUrl },
-    authorization,
-    variant === "legacy" ? 1 : 2
-  );
+  const schemaVersion = variant === "modern" ? 2 : 1;
+
+  return await xblCall({ url: requestUrl }, authorization, schemaVersion);
 }
