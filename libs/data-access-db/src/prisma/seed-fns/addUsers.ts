@@ -1,4 +1,7 @@
-import { GamingService } from "@prisma/client";
+/* eslint-disable no-console */
+
+import type { GamingService } from "@prisma/client";
+
 import db from "../index";
 
 interface NewUser {
@@ -14,7 +17,12 @@ const newUsers: NewUser[] = [
   {
     userName: "wc",
     discordId: "199221906061131785",
-    trackedAccounts: [{ accountUserName: "WCopeland", gamingService: "RA" }]
+    trackedAccounts: [
+      { accountUserName: "WCopeland", gamingService: "RA" },
+      { accountUserName: "UsableDayv", gamingService: "XBOX" },
+      { accountUserName: "WCopeland1", gamingService: "XBOX" },
+      { accountUserName: "SiegfriedX", gamingService: "XBOX" }
+    ]
   },
   {
     userName: "rayfinkel",

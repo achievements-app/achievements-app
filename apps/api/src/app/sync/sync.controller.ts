@@ -26,7 +26,7 @@ export class SyncController {
 
   @Get("retroachievements/full")
   async syncRetroachievementsAll() {
-    const allTrackedAccounts = await this.dbService.trackedAccount.findMany({
+    const allTrackedAccounts = await this.dbService.db.trackedAccount.findMany({
       where: {
         gamingService: "RA"
       }
@@ -72,6 +72,33 @@ export class SyncController {
     );
     const newJob = await this.syncQueue.add(
       syncJobNames.syncRetroachievementsUserGames,
+      payload
+    );
+    this.#logger.logQueuedJob(newJob.name, newJob.id);
+
+    return { status: "success" };
+  }
+
+  @Get("xbox/:userName")
+  async syncXboxUserName(@Param("userName") userName: string) {
+    const foundTrackedAccount =
+      await this.dbService.findTrackedAccountByAccountUserName(
+        "XBOX",
+        userName
+      );
+
+    if (!foundTrackedAccount) {
+      this.#logger.warn(`No tracked XBOX account for ${userName}`);
+      throw new HttpException("No tracked account.", HttpStatus.NOT_FOUND);
+    }
+
+    const payload: SyncUserGamesPayload = {
+      trackedAccount: foundTrackedAccount
+    };
+
+    this.#logger.logQueueingJob(syncJobNames.syncXboxUserGames, payload);
+    const newJob = await this.syncQueue.add(
+      syncJobNames.syncXboxUserGames,
       payload
     );
     this.#logger.logQueuedJob(newJob.name, newJob.id);

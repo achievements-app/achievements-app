@@ -76,6 +76,102 @@ export class DbService implements OnModuleInit {
     return newUserGameProgress;
   }
 
+  async cleanUserGameProgress(userGameProgress: UserGameProgress) {
+    return await this.db.userEarnedAchievement.deleteMany({
+      where: {
+        gameProgressEntityId: userGameProgress.id
+      }
+    });
+  }
+
+  async findAllStoredGameAchievements(storedGameId: string) {
+    return await this.db.gameAchievement.findMany({
+      where: {
+        gameId: storedGameId
+      }
+    });
+  }
+
+  async findCompleteUserGameProgress(
+    trackedAccountId: string,
+    storedGameId: string
+  ) {
+    return await this.db.userGameProgress.findUnique({
+      where: {
+        trackedAccountId_gameId: {
+          trackedAccountId,
+          gameId: storedGameId
+        }
+      },
+      include: { earnedAchievements: true }
+    });
+  }
+
+  async findExistingGame(gamingService: GamingService, serviceTitleId: string) {
+    return await this.db.game.findUnique({
+      where: {
+        gamingService_serviceTitleId: {
+          gamingService,
+          serviceTitleId
+        }
+      }
+    });
+  }
+
+  async findTrackedAccountByAccountUserName(
+    gamingService: GamingService,
+    accountUserName: string
+  ) {
+    return this.db.trackedAccount.findUnique({
+      where: {
+        gamingService_accountUserName: {
+          gamingService,
+          accountUserName
+        }
+      }
+    });
+  }
+
+  async getMultipleGamesExistenceStatus(
+    gamingService: GamingService,
+    serviceTitleIds: string[]
+  ) {
+    const foundGames = await this.db.game.findMany({
+      where: {
+        gamingService,
+        serviceTitleId: {
+          in: serviceTitleIds
+        }
+      }
+    });
+
+    const existingGameServiceTitleIds = foundGames.map(
+      (foundGame) => foundGame.serviceTitleId
+    );
+    const missingGameServiceTitleIds = serviceTitleIds.filter(
+      (id) => !existingGameServiceTitleIds.includes(id)
+    );
+
+    return { existingGameServiceTitleIds, missingGameServiceTitleIds };
+  }
+
+  /**
+   * Nearly all Xbox API calls require a XUID as the input,
+   * not a username or gamertag. We only want to fetch a gamertag's
+   * XUID once, and after we have it we want to persist it to
+   * the TrackedAccount entity.
+   */
+  async storeTrackedAccountXuid(trackedAccount: TrackedAccount, xuid: string) {
+    return await this.db.trackedAccount.update({
+      where: {
+        id: trackedAccount.id
+      },
+      data: {
+        xboxXuid: xuid
+      }
+    });
+  }
+
   async updateExistingRetroachievementsUserGameProgress(
     existingUserGameProgress: UserGameProgress,
     allEarnedAchievements: RaAchievement[],
@@ -117,14 +213,6 @@ export class DbService implements OnModuleInit {
             })
           }
         }
-      }
-    });
-  }
-
-  async cleanUserGameProgress(userGameProgress: UserGameProgress) {
-    return await this.db.userEarnedAchievement.deleteMany({
-      where: {
-        gameProgressEntityId: userGameProgress.id
       }
     });
   }
@@ -177,76 +265,5 @@ export class DbService implements OnModuleInit {
     );
 
     return upsertedGame;
-  }
-
-  async getMultipleGamesExistenceStatus(
-    gamingService: GamingService,
-    serviceTitleIds: string[]
-  ) {
-    const foundGames = await this.db.game.findMany({
-      where: {
-        gamingService,
-        serviceTitleId: {
-          in: serviceTitleIds
-        }
-      }
-    });
-
-    const existingGameServiceTitleIds = foundGames.map(
-      (foundGame) => foundGame.serviceTitleId
-    );
-    const missingGameServiceTitleIds = serviceTitleIds.filter(
-      (id) => !existingGameServiceTitleIds.includes(id)
-    );
-
-    return { existingGameServiceTitleIds, missingGameServiceTitleIds };
-  }
-
-  async findExistingGame(gamingService: GamingService, serviceTitleId: string) {
-    return await this.db.game.findUnique({
-      where: {
-        gamingService_serviceTitleId: {
-          gamingService,
-          serviceTitleId
-        }
-      }
-    });
-  }
-
-  async findTrackedAccountByAccountUserName(
-    gamingService: GamingService,
-    accountUserName: string
-  ) {
-    return this.db.trackedAccount.findUnique({
-      where: {
-        gamingService_accountUserName: {
-          gamingService,
-          accountUserName
-        }
-      }
-    });
-  }
-
-  async findCompleteUserGameProgress(
-    trackedAccountId: string,
-    storedGameId: string
-  ) {
-    return await this.db.userGameProgress.findUnique({
-      where: {
-        trackedAccountId_gameId: {
-          trackedAccountId,
-          gameId: storedGameId
-        }
-      },
-      include: { earnedAchievements: true }
-    });
-  }
-
-  async findAllStoredGameAchievements(storedGameId: string) {
-    return await this.db.gameAchievement.findMany({
-      where: {
-        gameId: storedGameId
-      }
-    });
   }
 }

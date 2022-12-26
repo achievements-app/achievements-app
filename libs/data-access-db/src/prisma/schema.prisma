@@ -85,6 +85,7 @@ model TrackedAccount {
   updatedAt       DateTime      @updatedAt
   gamingService   GamingService
   accountUserName String
+  xboxXuid        String?
 
   gameProgressEntities UserGameProgress[]
 

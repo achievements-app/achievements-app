@@ -6,6 +6,7 @@ import { UserGameCompletion } from "retroachievements-js";
 
 import { DbService } from "@/api/shared/db/db.service";
 import { RetroachievementsDataService } from "@/api/shared/integrations/retroachievements/retroachievements-data.service";
+import { XboxDataService } from "@/api/shared/integrations/xbox/xbox-data.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
 import { SyncQueuePayload, SyncUserGameProgressPayload } from "./models";
@@ -18,6 +19,7 @@ export class SyncService {
   constructor(
     @InjectQueue("sync") private readonly syncQueue: Queue<SyncQueuePayload>,
     private readonly retroachievementsDataService: RetroachievementsDataService,
+    private readonly xboxDataService: XboxDataService,
     private readonly dbService: DbService
   ) {}
 
@@ -136,6 +138,9 @@ export class SyncService {
   async getMissingAndPresentUserRetroachievementsGames(
     retroachievementsUserName: string
   ) {
+    // First, fetch the list of all the user games. From this, we'll
+    // have all the title IDs so we can check our database for what
+    // games we have and what games we're missing.
     const allUserGames =
       await this.retroachievementsDataService.fetchAllUserGames(
         retroachievementsUserName
@@ -162,12 +167,65 @@ export class SyncService {
     };
   }
 
+  async getMissingAndPresentUserXboxGames(userXuid: string, gamertag: string) {
+    // First, fetch the list of all the user games. From this, we'll
+    // have all the title IDs so we can check our database for what
+    // games we have and what games we're missing.
+    const allUserGames =
+      await this.xboxDataService.fetchCompleteTitleHistoryByXuid(userXuid);
+
+    const onlyGamesWithUserProgress = allUserGames.filter(
+      (userGame) => userGame.totalUnlockedGamerscore > 0
+    );
+
+    const allUserServiceTitleIds = onlyGamesWithUserProgress.map((userGame) =>
+      String(userGame.titleId)
+    );
+
+    const { existingGameServiceTitleIds, missingGameServiceTitleIds } =
+      await this.dbService.getMultipleGamesExistenceStatus(
+        "XBOX",
+        allUserServiceTitleIds
+      );
+
+    this.#logger.log(
+      `${gamertag}:${userXuid} has ${onlyGamesWithUserProgress.length} games tracked on XBOX. ${existingGameServiceTitleIds.length} of ${onlyGamesWithUserProgress.length} are stored in our DB.`
+    );
+
+    return {
+      existingGameServiceTitleIds,
+      missingGameServiceTitleIds,
+      allUserGames: onlyGamesWithUserProgress
+    };
+  }
+
+  /**
+   * Nearly every Xbox API call requires an XUID. We'll have this value
+   * stored every time except the first sync. If we're running the first
+   * sync for the account, we'll need to make a call to fetch the XUID.
+   */
+  async useTrackedAccountXuid(trackedAccount: TrackedAccount): Promise<string> {
+    if (trackedAccount.xboxXuid) {
+      return trackedAccount.xboxXuid;
+    }
+
+    // If we don't already have the account's XUID, retrieve it
+    // from Xbox and store it in the database. Note that we treat
+    // accountUserName as the gamertag.
+    const xuid = await this.xboxDataService.fetchXuidFromGamertag(
+      trackedAccount.accountUserName
+    );
+    await this.dbService.storeTrackedAccountXuid(trackedAccount, xuid);
+
+    return xuid;
+  }
+
   async queueSyncUserProgressJobsForRetroachievementsGames(
     serviceTitleIds: string[],
     userGames: UserGameCompletion[],
     trackedAccount: TrackedAccount
   ) {
-    const allTargetStoredGames = await this.dbService.game.findMany({
+    const allTargetStoredGames = await this.dbService.db.game.findMany({
       where: {
         gamingService: "RA",
         serviceTitleId: {
@@ -213,7 +271,7 @@ export class SyncService {
     serviceUserGames: UserGameCompletion[]
   ) {
     const allAccountUserGameProgresses =
-      await this.dbService.userGameProgress.findMany({
+      await this.dbService.db.userGameProgress.findMany({
         where: {
           trackedAccountId: trackedAccount.id,
           gameId: {

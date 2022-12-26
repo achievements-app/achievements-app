@@ -54,7 +54,7 @@ export class SyncProcessor {
     // Get all the user games recorded on RA, as well as what games we
     // do and don't currently have stored in our database. Games that we
     // don't have stored, we'll need to fetch and store before we can store
-    // the user's actual progress on the games.
+    // the user's actual progress on the game.
     const {
       allUserGames,
       existingGameServiceTitleIds,
@@ -129,5 +129,32 @@ export class SyncProcessor {
         job.data.serviceTitleId
       );
     }
+  }
+
+  @Process({
+    name: syncJobNames.syncXboxUserGames
+  })
+  async processSyncXboxUserGames(job: Job<SyncUserGamesPayload>) {
+    // Virtually all Xbox API calls require a XUID, not a gamertag.
+    // We can exchange a gamertag for a XUID, so do that first.
+    const userXuid = await this.syncService.useTrackedAccountXuid(
+      job.data.trackedAccount
+    );
+
+    // Get all the user games recorded on XBOX, as well as what games we
+    // do and don't currently have stored in our database. Games that we
+    // don't have stored, we'll need to fetch and store before we can store
+    // the user's actual progress on the game.
+    const {
+      allUserGames,
+      existingGameServiceTitleIds,
+      missingGameServiceTitleIds
+    } = await this.syncService.getMissingAndPresentUserXboxGames(
+      userXuid,
+      job.data.trackedAccount.accountUserName
+    );
+
+    // TODO: Every game that's missing, fetch from XBOX.
+    // Can we fetch multiple games in a single query?
   }
 }
