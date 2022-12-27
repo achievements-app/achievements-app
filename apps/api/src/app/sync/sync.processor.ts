@@ -142,7 +142,7 @@ export class SyncProcessor {
 
   @Process({
     name: syncJobNames.syncXboxUserGameProgress,
-    concurrency: 0
+    concurrency: 2
   })
   async processSyncXboxUserGameProgress(job: Job<SyncUserGameProgressPayload>) {
     // We'll either be updating an existing userGameProgress
@@ -198,7 +198,7 @@ export class SyncProcessor {
     }
   }
 
-  @Process({ name: syncJobNames.syncXboxUserGames, concurrency: 1 })
+  @Process({ name: syncJobNames.syncXboxUserGames, concurrency: 5 })
   async processSyncXboxUserGames(job: Job<SyncUserGamesPayload>) {
     // Virtually all Xbox API calls require a XUID, not a gamertag.
     // We can exchange a gamertag for a XUID, so do that first.

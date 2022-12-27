@@ -1,10 +1,8 @@
-import {
-  type XBLAuthorization,
-  call as xblCall
-} from "@xboxreplay/xboxlive-api";
+import { type XBLAuthorization } from "@xboxreplay/xboxlive-api";
 import urlcat from "urlcat";
 
 import type { FetchXboxTitleMetadataResponse } from "../models";
+import { limitedXboxCall } from "../utils/limitedXboxCall";
 
 export async function fetchTitleMetadata(
   payload: { xuid: string; titleId: string },
@@ -17,7 +15,7 @@ export async function fetchTitleMetadata(
     { xuid: payload.xuid, titleId: payload.titleId }
   );
 
-  return await xblCall<FetchXboxTitleMetadataResponse>(
+  return await limitedXboxCall<FetchXboxTitleMetadataResponse>(
     { url: requestUrl },
     authorization
   );

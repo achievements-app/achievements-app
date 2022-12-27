@@ -1,7 +1,4 @@
-import {
-  type XBLAuthorization,
-  call as xblCall
-} from "@xboxreplay/xboxlive-api";
+import { type XBLAuthorization } from "@xboxreplay/xboxlive-api";
 import urlcat from "urlcat";
 
 import type {
@@ -9,6 +6,7 @@ import type {
   XboxLegacyAchievementEntity,
   XboxModernAchievementEntity
 } from "../models";
+import { limitedXboxCall } from "../utils/limitedXboxCall";
 
 // Based on the variant, the return type will change.
 // This is achieved via return type overloads, hence
@@ -46,5 +44,9 @@ export async function fetchTitleAchievements(
 
   const schemaVersion = variant === "modern" ? 4 : 3;
 
-  return await xblCall({ url: requestUrl }, authorization, schemaVersion);
+  return await limitedXboxCall(
+    { url: requestUrl },
+    authorization,
+    schemaVersion
+  );
 }

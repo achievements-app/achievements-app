@@ -1,9 +1,16 @@
 import { Injectable } from "@nestjs/common";
+import { RateLimiter } from "limiter";
 
 import client from "./utils/retroachievements-client";
 
 @Injectable()
 export class RetroachievementsDataService {
+  // SEE: https://github.dev/RetroAchievements/RAWeb/blob/ae5bf5e49246c0f50582177bdab9dd0e88f0a7d1/app/Api/RouteServiceProvider.php#L24-L25
+  #rateLimiter = new RateLimiter({
+    tokensPerInterval: 120,
+    interval: "minute"
+  });
+
   // SEE: https://github.dev/RetroAchievements/RAWeb/blob/master/public/API/API_GetUserCompletedGames.php
   async fetchAllUserGames(targetUserName: string) {
     const userCompletedGames = await client.getUserGameCompletionStats(
@@ -20,6 +27,8 @@ export class RetroachievementsDataService {
     targetUserName: string,
     serviceTitleId: number | string
   ) {
+    await this.#rateLimiter.removeTokens(1);
+
     return client.getUserProgressForGameId(
       targetUserName,
       Number(serviceTitleId)
@@ -27,6 +36,8 @@ export class RetroachievementsDataService {
   }
 
   async fetchDeepGameInfo(serviceTitleId: number | string) {
+    await this.#rateLimiter.removeTokens(1);
+
     return client.getExtendedGameInfoByGameId(Number(serviceTitleId));
   }
 }

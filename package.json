@@ -25,6 +25,7 @@
     "@xboxreplay/xboxlive-auth": "^4.0.0",
     "bull": "^4.10.2",
     "dayjs": "^1.11.7",
+    "limiter": "^2.1.0",
     "p-limit": "3.1.0",
     "redis": "^4.5.1",
     "reflect-metadata": "^0.1.13",
