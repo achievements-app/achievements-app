@@ -24,29 +24,48 @@ export class SyncController {
     private readonly dbService: DbService
   ) {}
 
+  @Get("full")
+  async syncAll() {
+    const allTrackedAccounts =
+      await this.dbService.db.trackedAccount.findMany();
+
+    for (const trackedAccount of allTrackedAccounts) {
+      if (trackedAccount.gamingService === "RA") {
+        await this.syncRetroachievementsUserName(
+          trackedAccount.accountUserName
+        );
+      } else if (trackedAccount.gamingService === "XBOX") {
+        await this.syncXboxUserName(trackedAccount.accountUserName);
+      }
+    }
+
+    return { status: "success" };
+  }
+
+  @Get("xbox/full")
+  async syncXboxAll() {
+    const allTrackedAccounts = await this.dbService.db.trackedAccount.findMany({
+      where: { gamingService: "XBOX" }
+    });
+
+    await this.syncQueue.addBulk(
+      allTrackedAccounts.map((trackedAccount) => ({
+        name: syncJobNames.syncXboxUserGames,
+        data: { trackedAccount }
+      }))
+    );
+
+    return { status: "success" };
+  }
+
   @Get("retroachievements/full")
   async syncRetroachievementsAll() {
     const allTrackedAccounts = await this.dbService.db.trackedAccount.findMany({
-      where: {
-        gamingService: "RA"
-      }
+      where: { gamingService: "RA" }
     });
 
     for (const trackedAccount of allTrackedAccounts) {
-      const payload: SyncUserGamesPayload = {
-        trackedAccount
-      };
-
-      this.#logger.logQueueingJob(
-        syncJobNames.syncRetroachievementsUserGames,
-        payload
-      );
-      const newJob = await this.syncQueue.add(
-        syncJobNames.syncRetroachievementsUserGames,
-        payload,
-        { attempts: 3, backoff: 60000 }
-      );
-      this.#logger.logQueuedJob(newJob.name, newJob.id);
+      await this.syncRetroachievementsUserName(trackedAccount.accountUserName);
     }
 
     return { status: "success" };
@@ -72,11 +91,38 @@ export class SyncController {
     );
     const newJob = await this.syncQueue.add(
       syncJobNames.syncRetroachievementsUserGames,
-      payload
+      payload,
+      { attempts: 3, backoff: 60000 }
     );
     this.#logger.logQueuedJob(newJob.name, newJob.id);
 
     return { status: "success" };
+  }
+
+  @Get("xbox/gamerscore/:userName")
+  async getXboxUserGamerscore(@Param("userName") userName: string) {
+    const foundTrackedAccount =
+      await this.dbService.findTrackedAccountByAccountUserName(
+        "XBOX",
+        userName
+      );
+
+    const userEarnedAchievements =
+      await this.dbService.db.userEarnedAchievement.findMany({
+        where: {
+          gameProgressEntity: { trackedAccountId: foundTrackedAccount.id }
+        },
+        include: {
+          achievement: true
+        }
+      });
+
+    let gamerscore = 0;
+    for (const userEarnedAchievement of userEarnedAchievements) {
+      gamerscore += userEarnedAchievement.achievement.vanillaPoints;
+    }
+
+    return { gamerscore, count: userEarnedAchievements.length };
   }
 
   @Get("xbox/:userName")
@@ -99,7 +145,8 @@ export class SyncController {
     this.#logger.logQueueingJob(syncJobNames.syncXboxUserGames, payload);
     const newJob = await this.syncQueue.add(
       syncJobNames.syncXboxUserGames,
-      payload
+      payload,
+      { attempts: 3, backoff: 60000 }
     );
     this.#logger.logQueuedJob(newJob.name, newJob.id);
 

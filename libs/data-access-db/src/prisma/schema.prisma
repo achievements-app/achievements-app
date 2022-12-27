@@ -8,14 +8,16 @@ datasource db {
 }
 
 model Game {
-  id               String        @id @default(uuid())
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  name             String
-  gamingService    GamingService
-  serviceTitleId   String
-  gamePlatforms    String[]
-  knownPlayerCount Int?
+  id                         String        @id @default(uuid())
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+  name                       String
+  gamingService              GamingService
+  serviceTitleId             String
+  gamePlatforms              String[]
+  knownPlayerCount           Int?
+  xboxAchievementsSchemaKind String?
+  isStale                    Boolean?
 
   achievements         GameAchievement[]
   gameProgressEntities UserGameProgress[]

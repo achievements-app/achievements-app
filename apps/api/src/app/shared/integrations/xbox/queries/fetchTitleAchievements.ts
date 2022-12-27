@@ -38,11 +38,10 @@ export async function fetchTitleAchievements(
   >
 > {
   const apiBaseUrl = "https://achievements.xboxlive.com";
-  const requestUrl = urlcat(apiBaseUrl, "/users/xuid(:xuid)/:variantRoute", {
-    variantRoute: variant === "modern" ? "achievements" : "titleachievements",
+  const requestUrl = urlcat(apiBaseUrl, "/users/xuid(:xuid)/achievements", {
     xuid: payload.xuid,
     titleId: payload.titleId,
-    maxItems: 900
+    maxItems: 1000
   });
 
   const schemaVersion = variant === "modern" ? 4 : 3;

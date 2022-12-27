@@ -1,8 +1,10 @@
 export interface XboxSanitizedAchievementEntity {
-  id: string;
-  name: string;
   description: string;
   gamerscore: number;
-  rarityPercentage: number;
+  id: string;
   imageUrl: string | null;
+  name: string;
+  rarityPercentage: number;
+
+  timeUnlocked?: string;
 }

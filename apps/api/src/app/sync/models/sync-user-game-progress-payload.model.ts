@@ -4,5 +4,7 @@ export interface SyncUserGameProgressPayload {
   trackedAccount: TrackedAccount;
   storedGameId: string;
   serviceTitleId: string;
-  serviceReportedEarnedAchievementCount: number;
+
+  serviceReportedEarnedAchievementCount?: number;
+  serviceReportedEarnedGamerscore?: number;
 }

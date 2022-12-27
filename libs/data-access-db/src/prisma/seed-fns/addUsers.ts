@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import type { GamingService } from "@prisma/client";
+import type { GamingService, PrismaPromise } from "@prisma/client";
 
 import db from "../index";
 
@@ -21,7 +21,8 @@ const newUsers: NewUser[] = [
       { accountUserName: "WCopeland", gamingService: "RA" },
       { accountUserName: "UsableDayv", gamingService: "XBOX" },
       { accountUserName: "WCopeland1", gamingService: "XBOX" },
-      { accountUserName: "SiegfriedX", gamingService: "XBOX" }
+      { accountUserName: "SiegfriedX", gamingService: "XBOX" },
+      { accountUserName: "ViaFix", gamingService: "XBOX" }
     ]
   },
   {
@@ -143,19 +144,24 @@ export const addUsers = async () => {
 
   console.log("🌱  Seeding users...");
 
+  const batchOperations: PrismaPromise<any>[] = [];
   for (const newUser of newUsers) {
-    await db.user.create({
-      data: {
-        userName: newUser.userName,
-        discordId: newUser.discordId,
-        trackedAccounts: {
-          createMany: {
-            data: newUser.trackedAccounts
+    batchOperations.push(
+      db.user.create({
+        data: {
+          userName: newUser.userName,
+          discordId: newUser.discordId,
+          trackedAccounts: {
+            createMany: {
+              data: newUser.trackedAccounts
+            }
           }
         }
-      }
-    });
+      })
+    );
   }
+
+  await db.$transaction(batchOperations);
 
   console.log(`🌱  Seeded ${newUsers.length} users.`);
 

@@ -206,7 +206,7 @@ describe("Service: DbService", () => {
     expect(updatedUserGameProgress.earnedAchievements.length).toEqual(0);
   });
 
-  it("given a set of achievements and a UserGameCompletion can upsert a RetroAchievements game and its achievements set", async () => {
+  it("given a set of achievements and a UserGameCompletion can add a RetroAchievements game and its achievements set", async () => {
     // ARRANGE
     const mockUserGameCompletion = generateUserGameCompletion();
 
@@ -215,7 +215,7 @@ describe("Service: DbService", () => {
     const dbService = app.get(DbService);
 
     // ACT
-    await dbService.upsertRetroachievementsGame(
+    await dbService.addRetroachievementsGame(
       mockUserGameCompletion,
       mockGameAchievements
     );

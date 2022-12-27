@@ -33,11 +33,9 @@ export class SyncService {
     targetServiceTitleIds: string[],
     allUserGames: UserGameCompletion[]
   ) {
-    const upsertedGames: Game[] = [];
+    const addedGames: Game[] = [];
 
-    this.#logger.log(
-      `Need to upsert ${targetServiceTitleIds.length} RA titles`
-    );
+    this.#logger.log(`Need to add ${targetServiceTitleIds.length} RA titles`);
 
     for (const serviceTitleId of targetServiceTitleIds) {
       // We have to make a fetch to load all the game's achievements.
@@ -50,18 +48,18 @@ export class SyncService {
         (userGame) => userGame.gameId === Number(serviceTitleId)
       );
 
-      const upsertedGame = await this.dbService.upsertRetroachievementsGame(
+      const addedGame = await this.dbService.addRetroachievementsGame(
         targetGame,
         achievements,
         numDistinctPlayersHardcore
       );
 
-      upsertedGames.push(upsertedGame);
+      addedGames.push(addedGame);
     }
 
-    this.#logger.log(`Upserted ${upsertedGames.length} RA titles`);
+    this.#logger.log(`Added ${addedGames.length} RA titles`);
 
-    return upsertedGames;
+    return addedGames;
   }
 
   async addXboxTitlesToDb(
@@ -69,23 +67,24 @@ export class SyncService {
     targetServiceTitleIds: string[],
     allUserGames: XboxSanitizedTitleHistoryEntity[]
   ) {
-    const upsertedGames: Game[] = [];
+    const addedGames: Game[] = [];
 
     const targetUserGames = allUserGames.filter((userGame) =>
       targetServiceTitleIds.includes(String(userGame.titleId))
     );
-    this.#logger.log(`Need to upsert ${targetUserGames.length} XBOX titles`);
+    this.#logger.log(`Need to add ${targetUserGames.length} XBOX titles`);
 
     for (const targetUserGame of targetUserGames) {
       try {
         const deepGameInfo = await this.xboxDataService.fetchDeepGameInfo(
           userXuid,
-          targetUserGame
+          String(targetUserGame.titleId),
+          targetUserGame.titleKind
         );
 
-        const upsertedGame = await this.dbService.upsertXboxGame(deepGameInfo);
+        const addedGame = await this.dbService.addXboxGame(deepGameInfo);
 
-        upsertedGames.push(upsertedGame);
+        addedGames.push(addedGame);
 
         // TODO: When we fetch these games, Xbox is also returning the progress.
         // We should make sure we don't need to do subsequent fetches for the progress
@@ -98,7 +97,41 @@ export class SyncService {
       }
     }
 
-    return upsertedGames;
+    return addedGames;
+  }
+
+  async updateXboxTitlesInDb(
+    userXuid: string,
+    targetServiceTitleIds: string[],
+    allUserGames: XboxSanitizedTitleHistoryEntity[]
+  ) {
+    const updatedGames: Game[] = [];
+
+    const targetUserGames = allUserGames.filter((userGame) =>
+      targetServiceTitleIds.includes(String(userGame.titleId))
+    );
+    this.#logger.log(`Need to update ${targetUserGames.length} XBOX titles`);
+
+    for (const targetUserGame of targetUserGames) {
+      try {
+        const deepGameInfo = await this.xboxDataService.fetchDeepGameInfo(
+          userXuid,
+          String(targetUserGame.titleId),
+          targetUserGame.titleKind
+        );
+
+        const updatedGame = await this.dbService.updateXboxGame(deepGameInfo);
+
+        updatedGames.push(updatedGame);
+      } catch (error) {
+        this.#logger.error(
+          `Could not fetch XBOX game ${targetUserGame.name}:${targetUserGame.titleId}`,
+          error
+        );
+      }
+    }
+
+    return updatedGames;
   }
 
   async createRetroachievementsUserGameProgress(
@@ -107,10 +140,10 @@ export class SyncService {
     serviceTitleId: string
   ) {
     this.#logger.log(
-      `Creating UserGameProgress for ${trackedAccount.gamingService} ${trackedAccount.accountUserName} ${storedGameId}`
+      `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGameId}`
     );
 
-    // First, fetch the user progress from the gaming service itself.
+    // Fetch the user progress from the gaming service itself.
     // This is the list of unlocked achievements as well as when
     // they were unlocked.
     const serviceUserGameProgress =
@@ -127,7 +160,38 @@ export class SyncService {
       );
 
     this.#logger.log(
-      `Upsert UserGameProgress for ${trackedAccount.gamingService} ${trackedAccount.accountUserName} ${storedGameId}: ${newUserGameProgress.id}`
+      `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGameId} as ${newUserGameProgress.id}`
+    );
+
+    return newUserGameProgress;
+  }
+
+  async createXboxUserGameProgress(
+    storedGame: Game,
+    trackedAccount: TrackedAccount
+  ) {
+    this.#logger.log(
+      `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGame.id}`
+    );
+
+    // Fetch the user progress from the gaming service itself.
+    // This is the list of unlocked achievements as well as when
+    // they were unlocked.
+    const serviceUserGameProgress =
+      await this.xboxDataService.fetchDeepGameInfo(
+        trackedAccount.xboxXuid,
+        storedGame.serviceTitleId,
+        storedGame.xboxAchievementsSchemaKind as "legacy" | "modern"
+      );
+
+    const newUserGameProgress = await this.dbService.addNewXboxUserGameProgress(
+      storedGame.id,
+      trackedAccount,
+      serviceUserGameProgress
+    );
+
+    this.#logger.log(
+      `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGame.id} as ${newUserGameProgress.id}`
     );
 
     return newUserGameProgress;
@@ -140,7 +204,7 @@ export class SyncService {
     serviceTitleId: string
   ) {
     this.#logger.log(
-      `Updating UserGameProgress for ${trackedAccount.gamingService} ${trackedAccount.accountUserName} ${storedGameId}`
+      `Updating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGameId}`
     );
 
     // First, fetch the user progress from the gaming service itself.
@@ -169,7 +233,58 @@ export class SyncService {
     );
 
     this.#logger.log(
-      `Updated UserGameProgress for ${trackedAccount.gamingService} ${trackedAccount.accountUserName} ${storedGameId}`
+      `Updated UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGameId}`
+    );
+  }
+
+  async updateXboxUserGameProgress(
+    existingUserGameProgress: UserGameProgress,
+    storedGame: Game,
+    trackedAccount: TrackedAccount
+  ) {
+    this.#logger.log(
+      `Updating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGame.id}`
+    );
+
+    // First, fetch the user progress from the gaming service itself.
+    // This is the list of unlocked achievements as well as when
+    // they were unlocked.
+    const serviceUserGameProgress =
+      await this.xboxDataService.fetchDeepGameInfo(
+        trackedAccount.xboxXuid,
+        storedGame.serviceTitleId,
+        storedGame.xboxAchievementsSchemaKind as "legacy" | "modern"
+      );
+
+    const allGameAchievements =
+      await this.dbService.findAllStoredGameAchievements(storedGame.id);
+
+    const earnedGameAchievements = serviceUserGameProgress.achievements.filter(
+      (achievement) => !!achievement.timeUnlocked
+    );
+
+    // Has missing achievements?
+    const allGameAchievementServiceIds = allGameAchievements.map(
+      (gameAchievement) => gameAchievement.serviceAchievementId
+    );
+    const hasMissingAchievements = earnedGameAchievements.some(
+      (earnedGameAchievement) =>
+        !allGameAchievementServiceIds.includes(earnedGameAchievement.id)
+    );
+
+    // If there are missing achievements, we need to mark the game as stale.
+    // This will force a subsequent update of the game and its achievements.
+    if (hasMissingAchievements) {
+      this.#logger.log(
+        `Marking XBOX:${storedGame.name}:${storedGame.id} as stale`
+      );
+      await this.dbService.markGameAsStale(storedGame.id);
+    }
+
+    await this.dbService.updateExistingXboxUserGameProgress(
+      existingUserGameProgress,
+      earnedGameAchievements,
+      allGameAchievements
     );
   }
 
@@ -225,11 +340,14 @@ export class SyncService {
       String(userGame.titleId)
     );
 
-    const { existingGameServiceTitleIds, missingGameServiceTitleIds } =
-      await this.dbService.getMultipleGamesExistenceStatus(
-        "XBOX",
-        allUserServiceTitleIds
-      );
+    const {
+      existingGameServiceTitleIds,
+      missingGameServiceTitleIds,
+      staleGameServiceTitleIds
+    } = await this.dbService.getMultipleGamesExistenceStatus(
+      "XBOX",
+      allUserServiceTitleIds
+    );
 
     this.#logger.log(
       `${gamertag}:${userXuid} has ${onlyGamesWithUserProgress.length} games tracked on XBOX. ${existingGameServiceTitleIds.length} of ${onlyGamesWithUserProgress.length} are stored in our DB.`
@@ -238,6 +356,7 @@ export class SyncService {
     return {
       existingGameServiceTitleIds,
       missingGameServiceTitleIds,
+      staleGameServiceTitleIds,
       allUserGames: onlyGamesWithUserProgress
     };
   }
@@ -268,12 +387,11 @@ export class SyncService {
     userGames: UserGameCompletion[],
     trackedAccount: TrackedAccount
   ) {
+    // We first want to get the list of all titles needing a progress sync.
     const allTargetStoredGames = await this.dbService.db.game.findMany({
       where: {
         gamingService: "RA",
-        serviceTitleId: {
-          in: serviceTitleIds
-        }
+        serviceTitleId: { in: serviceTitleIds }
       }
     });
 
@@ -284,6 +402,8 @@ export class SyncService {
         userGames
       );
 
+    // For each title needing a progress sync, build a job payload and
+    // queue the progress sync job.
     for (const serviceTitleIdNeedingSync of allServiceTitleIdsNeedingSync) {
       const storedGame = allTargetStoredGames.find(
         (game) => game.serviceTitleId === serviceTitleIdNeedingSync
@@ -308,24 +428,72 @@ export class SyncService {
     }
   }
 
+  async queueSyncUserProgressJobsForXboxGames(
+    serviceTitleIds: string[],
+    userGames: XboxSanitizedTitleHistoryEntity[],
+    trackedAccount: TrackedAccount
+  ) {
+    // We first want to get the list of all titles needing a progress sync.
+    const allTargetStoredGames = await this.dbService.db.game.findMany({
+      where: {
+        gamingService: "XBOX",
+        serviceTitleId: { in: serviceTitleIds }
+      }
+    });
+
+    // Some really old mobile games might still be on the user's account
+    // but we cannot actually fetch the progress for these titles anymore.
+    // "Wordament" is a good example. Filter these games out.
+    const withoutMissingUserGames = userGames.filter(
+      (userGame) =>
+        !!allTargetStoredGames.find(
+          (targetStoredGame) =>
+            targetStoredGame.serviceTitleId === String(userGame.titleId)
+        )
+    );
+
+    const allServiceTitleIdsNeedingSync =
+      await this.getAllXboxGamesRequiringProgressSync(
+        trackedAccount,
+        allTargetStoredGames,
+        withoutMissingUserGames
+      );
+
+    // For each title needing a progress sync, build a job payload and
+    // queue the progress sync job.
+    for (const serviceTitleIdNeedingSync of allServiceTitleIdsNeedingSync) {
+      const storedGame = allTargetStoredGames.find(
+        (game) => game.serviceTitleId === serviceTitleIdNeedingSync
+      );
+
+      const targetUserGame = userGames.find(
+        (userGame) => userGame.titleId === Number(serviceTitleIdNeedingSync)
+      );
+
+      const payload: SyncUserGameProgressPayload = {
+        trackedAccount,
+        serviceTitleId: serviceTitleIdNeedingSync,
+        storedGameId: storedGame.id,
+        serviceReportedEarnedGamerscore: targetUserGame.totalUnlockedGamerscore
+      };
+
+      this.syncQueue.add(syncJobNames.syncXboxUserGameProgress, payload, {
+        attempts: 5,
+        backoff: 10000
+      });
+    }
+  }
+
   private async getAllRetroachievementsGamesRequiringProgressSync(
     trackedAccount: TrackedAccount,
     storedGames: Game[],
     serviceUserGames: UserGameCompletion[]
   ) {
     const allAccountUserGameProgresses =
-      await this.dbService.db.userGameProgress.findMany({
-        where: {
-          trackedAccountId: trackedAccount.id,
-          gameId: {
-            in: storedGames.map((game) => game.id)
-          }
-        },
-        include: {
-          game: true,
-          earnedAchievements: true
-        }
-      });
+      await this.dbService.findAllTrackedAccountUserGameProgressByGameIds(
+        trackedAccount.id,
+        storedGames.map((game) => game.id)
+      );
 
     const serviceTitleIdsNeedingSync: string[] = [];
 
@@ -349,12 +517,65 @@ export class SyncService {
       const needsSync = !foundUserGameProgress || !doAchievementCountsMatch;
       if (needsSync) {
         this.#logger.log(
-          `Work needed for ${trackedAccount.accountUserName} ${serviceUserGame.gameId}`
+          `Work needed for ${trackedAccount.accountUserName} ${serviceUserGame.title}:${serviceUserGame.gameId}`
         );
         serviceTitleIdsNeedingSync.push(String(serviceUserGame.gameId));
       } else {
         this.#logger.verbose(
-          `No work needed for ${trackedAccount.accountUserName} ${serviceUserGame.gameId}`
+          `No work needed for ${trackedAccount.accountUserName} ${serviceUserGame.title}:${serviceUserGame.gameId}`
+        );
+      }
+    }
+
+    return serviceTitleIdsNeedingSync;
+  }
+
+  private async getAllXboxGamesRequiringProgressSync(
+    trackedAccount: TrackedAccount,
+    storedGames: Game[],
+    serviceUserGames: XboxSanitizedTitleHistoryEntity[]
+  ) {
+    const allAccountUserGameProgresses =
+      await this.dbService.findAllTrackedAccountUserGameProgressByGameIds(
+        trackedAccount.id,
+        storedGames.map((game) => game.id)
+      );
+
+    const serviceTitleIdsNeedingSync: string[] = [];
+
+    for (const serviceUserGame of serviceUserGames) {
+      // Work is needed if:
+      // (a) There is no UserGameProgress entity for the game, or
+      // (b) The current unlocked gamerscore reported by Xbox does not
+      // match the unlocked gamerscore we've stored internally.
+
+      const foundUserGameProgress = allAccountUserGameProgresses.find(
+        (userGameProgress) =>
+          userGameProgress.game.serviceTitleId ===
+          String(serviceUserGame.titleId)
+      );
+
+      // Determine the unlocked gamerscore we've stored internally.
+      let knownUnlockedGamerscore = 0;
+      if (foundUserGameProgress) {
+        for (const earnedAchievement of foundUserGameProgress.earnedAchievements) {
+          knownUnlockedGamerscore +=
+            earnedAchievement.achievement.vanillaPoints;
+        }
+      }
+
+      const doesGamerscoreMatch =
+        serviceUserGame.totalUnlockedGamerscore === knownUnlockedGamerscore;
+
+      const needsSync = !foundUserGameProgress || !doesGamerscoreMatch;
+      if (needsSync) {
+        this.#logger.log(
+          `Work needed for ${trackedAccount.accountUserName} ${serviceUserGame.name}:${serviceUserGame.titleId}`
+        );
+        serviceTitleIdsNeedingSync.push(String(serviceUserGame.titleId));
+      } else {
+        this.#logger.log(
+          `No work needed for ${trackedAccount.accountUserName} ${serviceUserGame.name}:${serviceUserGame.titleId}`
         );
       }
     }

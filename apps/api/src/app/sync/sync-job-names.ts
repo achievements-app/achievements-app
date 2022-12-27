@@ -1,6 +1,8 @@
 export const syncJobNames = {
+  refreshXboxGame: "refreshXboxGame",
   syncRetroachievementsUserGames: "syncRetroachievementsUserGames",
   syncRetroachievementsUserGameProgress:
     "syncRetroachievementsUserGameProgress",
-  syncXboxUserGames: "syncXboxUserGames"
+  syncXboxUserGames: "syncXboxUserGames",
+  syncXboxUserGameProgress: "syncXboxUserGameProgress"
 };

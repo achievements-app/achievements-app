@@ -3,4 +3,5 @@ import type { XboxTitleMetadata } from "./xbox-title-metadata.model";
 
 export type XboxDeepGameInfo = XboxTitleMetadata & {
   achievements: XboxSanitizedAchievementEntity[];
+  achievementsSchemaKind: "legacy" | "modern";
 };

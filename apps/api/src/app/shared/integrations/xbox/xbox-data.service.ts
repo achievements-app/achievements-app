@@ -31,15 +31,16 @@ export class XboxDataService {
 
   async fetchDeepGameInfo(
     xuid: string,
-    userGame: XboxSanitizedTitleHistoryEntity
+    xboxTitleId: string,
+    achievementsSchemaKind: "legacy" | "modern"
   ): Promise<XboxDeepGameInfo> {
     // Make these calls at the same time to improve performance.
     const parallelApiCalls = [
-      this.fetchTitleMetadata(xuid, String(userGame.titleId)),
+      this.fetchTitleMetadata(xuid, xboxTitleId),
       this.fetchTitleAchievementsForTitleId(
         xuid,
-        userGame.titleId,
-        userGame.titleKind
+        Number(xboxTitleId),
+        achievementsSchemaKind
       )
     ];
 
@@ -49,6 +50,7 @@ export class XboxDataService {
 
     return {
       ...titleMetadata.titles[0],
+      achievementsSchemaKind,
       achievements: titleAchievements
     };
   }
@@ -66,7 +68,7 @@ export class XboxDataService {
   /**
    * Given an Xbox title ID, probably retrieved via
    * `fetchCompleteTitleHistoryByXuid()`, retrieve the
-   * complete  list of achievements for that title.
+   * complete list of achievements for that title.
    */
   async fetchTitleAchievementsForTitleId(
     xuid: string,
@@ -159,11 +161,16 @@ export class XboxDataService {
   ): XboxSanitizedAchievementEntity {
     let possibleGamerscore = 0;
     let imageUrl: string | null = null;
+    let timeUnlocked: string;
 
     const isModernAchievementEntity =
       "serviceConfigId" in titleAchievementEntity;
 
     if (isModernAchievementEntity) {
+      if (titleAchievementEntity.progressState === "Achieved") {
+        timeUnlocked = titleAchievementEntity.progression.timeUnlocked;
+      }
+
       const foundGamerscoreReward = titleAchievementEntity.rewards.find(
         (reward) => reward.type === "Gamerscore"
       );
@@ -180,6 +187,13 @@ export class XboxDataService {
     } else {
       possibleGamerscore = titleAchievementEntity.gamerscore;
 
+      if (
+        titleAchievementEntity.unlocked ||
+        titleAchievementEntity.unlockedOnline
+      ) {
+        timeUnlocked = titleAchievementEntity.timeUnlocked;
+      }
+
       imageUrl = buildLegacyAchievementImageUrl(
         titleAchievementEntity.titleId,
         titleAchievementEntity.imageId
@@ -188,6 +202,7 @@ export class XboxDataService {
 
     return {
       imageUrl,
+      timeUnlocked,
       name: titleAchievementEntity.name,
       id: String(titleAchievementEntity.id),
       description: titleAchievementEntity.description,

@@ -4,6 +4,7 @@ import {
   OnQueueCompleted,
   OnQueueError,
   OnQueueFailed,
+  OnQueueStalled,
   Process,
   Processor
 } from "@nestjs/bull";
@@ -25,6 +26,11 @@ export class SyncProcessor {
     private readonly syncService: SyncService,
     private readonly dbService: DbService
   ) {}
+
+  @OnQueueStalled()
+  onStalled(job: Job) {
+    this.#logger.warn(`JOB STALLED ${job.id}`);
+  }
 
   @OnQueueActive()
   onActive(job: Job) {
@@ -98,10 +104,12 @@ export class SyncProcessor {
         job.data.storedGameId
       );
 
-    // If a userGameProgress entity doesn't exist, we have to
+    // If a UserGameProgress entity doesn't exist, we have to
     // create a new one before doing anything else.
     if (!foundUserGameProgress) {
-      this.#logger.log(`Missing UserGameProgress for ${job.data.storedGameId}`);
+      this.#logger.log(
+        `Missing UserGameProgress for RA:${job.data.trackedAccount.id}:${job.data.storedGameId}`
+      );
 
       await this.syncService.createRetroachievementsUserGameProgress(
         job.data.storedGameId,
@@ -112,13 +120,14 @@ export class SyncProcessor {
       foundUserGameProgress.earnedAchievements.length !==
       job.data.serviceReportedEarnedAchievementCount
     ) {
-      this.#logger.log(`
-        Found UserGameProgress for ${job.data.storedGameId}.
-        Missing ${
+      this.#logger.log(
+        `Found UserGameProgress for RA:${job.data.trackedAccount.id}:${
+          job.data.storedGameId
+        }. Missing ${
           job.data.serviceReportedEarnedAchievementCount -
           foundUserGameProgress.earnedAchievements.length
-        } reported earned achievements.
-      `);
+        } reported earned achievements.`
+      );
 
       // This will erase the existing achievements attached to
       // the UserGameProgress entity and create an entirely new set.
@@ -132,8 +141,64 @@ export class SyncProcessor {
   }
 
   @Process({
-    name: syncJobNames.syncXboxUserGames
+    name: syncJobNames.syncXboxUserGameProgress,
+    concurrency: 0
   })
+  async processSyncXboxUserGameProgress(job: Job<SyncUserGameProgressPayload>) {
+    // We'll either be updating an existing userGameProgress
+    // entity or creating an entirely new one.
+    const foundUserGameProgress =
+      await this.dbService.findCompleteUserGameProgress(
+        job.data.trackedAccount.id,
+        job.data.storedGameId
+      );
+
+    const foundGame = await this.dbService.db.game.findFirst({
+      where: { id: job.data.storedGameId }
+    });
+
+    // If a UserGameProgress entity doesn't exist, we have to
+    // create a new one before doing anything else.
+    if (!foundUserGameProgress) {
+      this.#logger.log(
+        `Missing UserGameProgress for XBOX:${job.data.trackedAccount.id}:${job.data.storedGameId}`
+      );
+
+      await this.syncService.createXboxUserGameProgress(
+        foundGame,
+        job.data.trackedAccount
+      );
+    } else {
+      let trackedUnlockedGamerscore = 0;
+      for (const earnedAchievement of foundUserGameProgress.earnedAchievements) {
+        trackedUnlockedGamerscore +=
+          earnedAchievement.achievement.vanillaPoints;
+      }
+
+      if (
+        trackedUnlockedGamerscore !== job.data.serviceReportedEarnedGamerscore
+      ) {
+        this.#logger.log(
+          `Found UserGameProgress for XBOX:${job.data.trackedAccount.id}:${
+            job.data.storedGameId
+          }. Missing ${
+            (job.data.serviceReportedEarnedGamerscore ?? 0) -
+            trackedUnlockedGamerscore
+          } reported gamerscore.`
+        );
+
+        // This will erase the existing achievements attached to
+        // the UserGameProgress entity and create an entirely new set.
+        await this.syncService.updateXboxUserGameProgress(
+          foundUserGameProgress,
+          foundGame,
+          job.data.trackedAccount
+        );
+      }
+    }
+  }
+
+  @Process({ name: syncJobNames.syncXboxUserGames, concurrency: 1 })
   async processSyncXboxUserGames(job: Job<SyncUserGamesPayload>) {
     // Virtually all Xbox API calls require a XUID, not a gamertag.
     // We can exchange a gamertag for a XUID, so do that first.
@@ -148,7 +213,8 @@ export class SyncProcessor {
     const {
       allUserGames,
       existingGameServiceTitleIds,
-      missingGameServiceTitleIds
+      missingGameServiceTitleIds,
+      staleGameServiceTitleIds
     } = await this.syncService.getMissingAndPresentUserXboxGames(
       userXuid,
       job.data.trackedAccount.accountUserName
@@ -161,12 +227,24 @@ export class SyncProcessor {
       allUserGames
     );
 
+    // Update all the stale games and their achievements in our DB.
+    const updatedGames = await this.syncService.updateXboxTitlesInDb(
+      userXuid,
+      staleGameServiceTitleIds,
+      allUserGames
+    );
+
     // For every game we just added, we'll want to also sync
     // the user's progress for that game.
     const serviceTitleIdsToSyncUserProgress = [
       ...newlyAddedGames.map((game) => game.serviceTitleId),
+      ...updatedGames.map((game) => game.serviceTitleId),
       ...existingGameServiceTitleIds
     ];
-    // TODO
+    await this.syncService.queueSyncUserProgressJobsForXboxGames(
+      serviceTitleIdsToSyncUserProgress,
+      allUserGames,
+      { ...job.data.trackedAccount, xboxXuid: userXuid }
+    );
   }
 }
