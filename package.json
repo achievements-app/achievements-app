@@ -12,7 +12,7 @@
     "db:studio": "nx run data-access-db:studio",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "test:api": "dotenv -e .env.test -- yarn docker:up && yarn prisma migrate deploy --schema=./libs/data-access-db/src/prisma/schema.prisma && nx test api"
+    "test:api": "dotenv -e .env.test -- yarn docker:up && nx test api"
   },
   "private": true,
   "dependencies": {
@@ -48,6 +48,7 @@
     "@types/bull": "^4.10.0",
     "@types/jest": "28.1.1",
     "@types/node": "18.7.1",
+    "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.36.1",
     "@typescript-eslint/parser": "^5.36.1",
     "cross-spawn": "^7.0.3",
@@ -71,6 +72,7 @@
     "ts-jest": "28.0.5",
     "ts-node": "10.9.1",
     "type-fest": "^3.4.0",
-    "typescript": "~4.8.2"
+    "typescript": "~4.8.2",
+    "uuid": "^9.0.0"
   }
 }

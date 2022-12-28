@@ -139,7 +139,7 @@ const newUsers: NewUser[] = [
   }
 ];
 
-export const addUsers = async () => {
+export const seedUsers = async () => {
   await db.$connect();
 
   console.log("🌱  Seeding users...");

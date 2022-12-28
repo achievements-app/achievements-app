@@ -111,6 +111,10 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  /**
+   * Given a UserGameProgress entity, wipe all UserEarnedAchievement
+   * entities that are associated with it.
+   */
   async cleanUserGameProgress(userGameProgress: UserGameProgress) {
     return await this.db.userEarnedAchievement.deleteMany({
       where: {
@@ -199,9 +203,9 @@ export class DbService implements OnModuleInit {
       }
     });
 
-    const existingGameServiceTitleIds = foundGames.map(
-      (foundGame) => foundGame.serviceTitleId
-    );
+    const existingGameServiceTitleIds = foundGames
+      .filter((foundGame) => !foundGame.isStale)
+      .map((foundGame) => foundGame.serviceTitleId);
     const missingGameServiceTitleIds = serviceTitleIds.filter(
       (id) => !existingGameServiceTitleIds.includes(id)
     );
