@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 
-import type { GamingService, PrismaPromise } from "@prisma/client";
-
+import type { GamingService, PrismaPromise } from "../index";
 import db from "../index";
 
 interface NewUser {

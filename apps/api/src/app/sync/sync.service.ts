@@ -1,7 +1,12 @@
 import { InjectQueue } from "@nestjs/bull";
 import { Injectable } from "@nestjs/common";
-import { Game, TrackedAccount, UserGameProgress } from "@prisma/client";
-import { Queue } from "bull";
+import type { Queue } from "bull";
+
+import type {
+  Game,
+  TrackedAccount,
+  UserGameProgress
+} from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
 import { RetroachievementsService } from "@/api/shared/integrations/retroachievements/retroachievements.service";
@@ -9,7 +14,7 @@ import { XboxService } from "@/api/shared/integrations/xbox/xbox.service";
 import { XboxDataService } from "@/api/shared/integrations/xbox/xbox-data.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import { MappedGame } from "../common/models";
+import type { MappedGame } from "../common/models";
 import { SyncQueuePayload, SyncUserGameProgressPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 

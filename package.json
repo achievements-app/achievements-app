@@ -4,10 +4,11 @@
   "license": "MIT",
   "scripts": {
     "dev:api": "nx serve api",
-    "build:api": "nx build api --prod",
+    "build:api": "yarn migrate:deploy && nx build api --prod",
     "start:api": "start dist/apps/api/main.js",
     "test": "nx test",
-    "db:migrate": "yarn prisma migrate dev --schema=./libs/data-access-db/src/prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema=./libs/data-access-db/src/prisma/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema=./libs/data-access-db/src/prisma/schema.prisma",
     "db:reset": "nx run data-access-db:reset && npx ts-node tools/reset-redis.ts",
     "db:seed": "nx run data-access-db:seed",
     "db:studio": "nx run data-access-db:studio",

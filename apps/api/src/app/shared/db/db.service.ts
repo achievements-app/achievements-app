@@ -4,14 +4,14 @@ import {
   Logger,
   OnModuleInit
 } from "@nestjs/common";
+
 import type {
   GameAchievement,
   GamingService,
   PrismaPromise,
   TrackedAccount,
   UserGameProgress
-} from "@prisma/client";
-
+} from "@achievements-app/data-access-db";
 import { db } from "@achievements-app/data-access-db";
 
 import type {
