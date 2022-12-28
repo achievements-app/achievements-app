@@ -1,6 +1,7 @@
 import { BullModule } from "@nestjs/bull";
 import { Module } from "@nestjs/common";
 
+import { AppController } from "./app.controller";
 import { SyncModule } from "./sync/sync.module";
 
 @Module({
@@ -16,6 +17,6 @@ import { SyncModule } from "./sync/sync.module";
 
     SyncModule
   ],
-  controllers: []
+  controllers: [AppController]
 })
 export class AppModule {}
