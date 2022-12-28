@@ -141,6 +141,8 @@ export class XboxDataService implements OnModuleInit {
     const systemUserName = process.env["XBOX_EMAIL"] ?? "";
     const systemPassword = process.env["XBOX_PASSWORD"] ?? "";
 
+    console.log({ systemUserName, systemPassword });
+
     const newAuthentication = await callXboxAuthenticate(
       systemUserName,
       systemPassword
