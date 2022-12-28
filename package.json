@@ -3,18 +3,20 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
+    "postinstall": "yarn db:generate",
+    "test": "nx test",
     "dev:api": "nx serve api",
     "build:api": "yarn db:migrate:deploy && nx build api --prod",
     "start:api": "start dist/apps/api/main.js",
-    "test": "nx test",
+    "test:api": "dotenv -e .env.test -- yarn docker:up && nx test api",
     "db:migrate:deploy": "prisma migrate deploy --schema=./libs/data-access-db/src/prisma/schema.prisma",
     "db:migrate:dev": "prisma migrate dev --schema=./libs/data-access-db/src/prisma/schema.prisma",
     "db:reset": "nx run data-access-db:reset && npx ts-node tools/reset-redis.ts",
     "db:seed": "nx run data-access-db:seed",
     "db:studio": "nx run data-access-db:studio",
+    "db:generate": "prisma generate --schema=./libs/data-access-db/src/prisma/schema.prisma",
     "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "test:api": "dotenv -e .env.test -- yarn docker:up && nx test api"
+    "docker:down": "docker-compose down"
   },
   "private": true,
   "dependencies": {
