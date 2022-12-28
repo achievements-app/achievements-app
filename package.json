@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "dev:api": "nx serve api",
-    "build:api": "yarn migrate:deploy && nx build api --prod",
+    "build:api": "yarn db:migrate:deploy && nx build api --prod",
     "start:api": "start dist/apps/api/main.js",
     "test": "nx test",
     "db:migrate:deploy": "prisma migrate deploy --schema=./libs/data-access-db/src/prisma/schema.prisma",
