@@ -92,7 +92,7 @@ export class SyncController {
     const newJob = await this.syncQueue.add(
       syncJobNames.syncRetroachievementsUserGames,
       payload,
-      { attempts: 3, backoff: 60000 }
+      { attempts: 6, backoff: 60000 }
     );
     this.#logger.logQueuedJob(newJob.name, newJob.id);
 
@@ -146,7 +146,7 @@ export class SyncController {
     const newJob = await this.syncQueue.add(
       syncJobNames.syncXboxUserGames,
       payload,
-      { attempts: 3, backoff: 60000 }
+      { attempts: 6, backoff: 60000 }
     );
     this.#logger.logQueuedJob(newJob.name, newJob.id);
 

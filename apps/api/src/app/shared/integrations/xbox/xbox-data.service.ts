@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import { type XBLAuthorization, getPlayerXUID } from "@xboxreplay/xboxlive-api";
 import {
   type CredentialsAuthenticateInitialResponse,
@@ -25,9 +25,13 @@ import { fetchTitleMetadata } from "./queries/fetchTitleMetadata";
 import { buildLegacyAchievementImageUrl } from "./utils/buildLegacyAchievementImageUrl";
 
 @Injectable()
-export class XboxDataService {
+export class XboxDataService implements OnModuleInit {
   #currentAuthorization: Readonly<CredentialsAuthenticateInitialResponse>;
   #logger = new Logger(XboxDataService.name);
+
+  async onModuleInit() {
+    this.#getNewXboxAuthorization();
+  }
 
   async fetchDeepGameInfo(
     xuid: string,

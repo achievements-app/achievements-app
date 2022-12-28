@@ -1,5 +1,4 @@
 import {
-  InjectQueue,
   OnQueueActive,
   OnQueueCompleted,
   OnQueueError,
@@ -8,7 +7,7 @@ import {
   Process,
   Processor
 } from "@nestjs/bull";
-import { type Job, Queue } from "bull";
+import { type Job } from "bull";
 
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
@@ -22,7 +21,6 @@ export class SyncProcessor {
   #logger = new Logger(SyncProcessor.name);
 
   constructor(
-    @InjectQueue("sync") private readonly syncQueue: Queue,
     private readonly syncService: SyncService,
     private readonly dbService: DbService
   ) {}
@@ -64,7 +62,8 @@ export class SyncProcessor {
     const {
       allUserGames,
       existingGameServiceTitleIds,
-      missingGameServiceTitleIds
+      missingGameServiceTitleIds,
+      staleGameServiceTitleIds
     } = await this.syncService.getMissingAndPresentUserRetroachievementsGames(
       job.data.trackedAccount.accountUserName
     );
@@ -72,14 +71,20 @@ export class SyncProcessor {
     // Add all the missing games and their achievements to our DB.
     const newlyAddedGames =
       await this.syncService.addRetroachievementsTitlesToDb(
-        missingGameServiceTitleIds,
-        allUserGames
+        missingGameServiceTitleIds
+      );
+
+    // Update all the stale games and their achievements in our DB.
+    const updatedGames =
+      await this.syncService.updateRetroachievementsTitlesInDb(
+        staleGameServiceTitleIds
       );
 
     // For every game we just added, we'll want to also sync
     // the user's progress for that game.
     const serviceTitleIdsToSyncUserProgress = [
       ...newlyAddedGames.map((game) => game.serviceTitleId),
+      ...updatedGames.map((game) => game.serviceTitleId),
       ...existingGameServiceTitleIds
     ];
     await this.syncService.queueSyncUserProgressJobsForRetroachievementsGames(

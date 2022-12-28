@@ -11,18 +11,13 @@ import type {
   TrackedAccount,
   UserGameProgress
 } from "@prisma/client";
-import type {
-  Achievement as RaAchievement,
-  GameInfoAndUserProgress,
-  UserGameCompletion as RaUserGameCompletion
-} from "retroachievements-js";
 
 import { db } from "@achievements-app/data-access-db";
 
 import type {
-  XboxDeepGameInfo,
-  XboxSanitizedAchievementEntity
-} from "@/api/shared/integrations/xbox/models";
+  MappedCompleteGame,
+  MappedGameAchievement
+} from "@/api/common/models";
 
 @Injectable()
 export class DbService implements OnModuleInit {
@@ -42,7 +37,7 @@ export class DbService implements OnModuleInit {
   async addNewRetroachievementsUserGameProgress(
     storedGameId: string,
     trackedAccount: TrackedAccount,
-    serviceUserGameProgress: GameInfoAndUserProgress
+    serviceEarnedAchievements: MappedGameAchievement[]
   ) {
     const allGameAchievements = await this.findAllStoredGameAchievements(
       storedGameId
@@ -55,21 +50,19 @@ export class DbService implements OnModuleInit {
         earnedAchievements: {
           createMany: {
             skipDuplicates: true,
-            data: serviceUserGameProgress.achievements
-              .filter((achievement) => achievement.dateEarnedHardcore)
-              .map((achievement) => {
-                const storedGameAchievement = allGameAchievements.find(
-                  (gameAchievement) =>
-                    gameAchievement.serviceAchievementId ===
-                    String(achievement.id)
-                );
+            data: serviceEarnedAchievements.map((achievement) => {
+              const storedGameAchievement = allGameAchievements.find(
+                (gameAchievement) =>
+                  gameAchievement.serviceAchievementId ===
+                  achievement.serviceAchievementId
+              );
 
-                return {
-                  gameAchievementId: storedGameAchievement.id,
-                  // TODO: is this timezone okay?
-                  earnedOn: achievement.dateEarnedHardcore
-                };
-              })
+              return {
+                gameAchievementId: storedGameAchievement.id,
+                // TODO: is this timezone okay?
+                earnedOn: achievement.earnedOn
+              };
+            })
           }
         }
       }
@@ -79,7 +72,7 @@ export class DbService implements OnModuleInit {
   async addNewXboxUserGameProgress(
     storedGameId: string,
     trackedAccount: TrackedAccount,
-    serviceUserGameProgress: XboxDeepGameInfo
+    serviceUserGameProgress: MappedCompleteGame
   ) {
     const allGameAchievements = await this.findAllStoredGameAchievements(
       storedGameId
@@ -93,11 +86,12 @@ export class DbService implements OnModuleInit {
           createMany: {
             skipDuplicates: true,
             data: serviceUserGameProgress.achievements
-              .filter((achievement) => achievement.timeUnlocked)
+              .filter((achievement) => achievement.earnedOn)
               .map((achievement) => {
                 const foundStoredGameAchievement = allGameAchievements.find(
                   (gameAchievement) =>
-                    gameAchievement.serviceAchievementId === achievement.id
+                    gameAchievement.serviceAchievementId ===
+                    achievement.serviceAchievementId
                 );
 
                 // If we fall into this block, the function will almost certainly fail.
@@ -108,7 +102,7 @@ export class DbService implements OnModuleInit {
 
                 return {
                   gameAchievementId: foundStoredGameAchievement.id,
-                  earnedOn: achievement.timeUnlocked
+                  earnedOn: achievement.earnedOn
                 };
               })
           }
@@ -249,7 +243,7 @@ export class DbService implements OnModuleInit {
 
   async updateExistingRetroachievementsUserGameProgress(
     existingUserGameProgress: UserGameProgress,
-    allEarnedAchievements: RaAchievement[],
+    allEarnedAchievements: MappedGameAchievement[],
     allStoredAchievements: GameAchievement[]
   ) {
     this.#logger.log(
@@ -271,7 +265,7 @@ export class DbService implements OnModuleInit {
               const storedGameAchievement = allStoredAchievements.find(
                 (storedAchievement) =>
                   storedAchievement.serviceAchievementId ===
-                  String(achievement.id)
+                  achievement.serviceAchievementId
               );
 
               // TODO: Throw error if storedGameAchievement not found.
@@ -279,7 +273,7 @@ export class DbService implements OnModuleInit {
               return {
                 gameAchievementId: storedGameAchievement.id,
                 // TODO: is this timezone okay?
-                earnedOn: achievement.dateEarnedHardcore
+                earnedOn: achievement.earnedOn
               };
             })
           }
@@ -290,7 +284,7 @@ export class DbService implements OnModuleInit {
 
   async updateExistingXboxUserGameProgress(
     existingUserGameProgress: UserGameProgress,
-    allEarnedAchievements: XboxSanitizedAchievementEntity[],
+    allEarnedAchievements: MappedGameAchievement[],
     allStoredAchievements: GameAchievement[]
   ) {
     this.#logger.log(
@@ -305,7 +299,7 @@ export class DbService implements OnModuleInit {
     const storedEarnedAchievements = allStoredAchievements.filter(
       (gameAchievement) =>
         allEarnedAchievements
-          .map((earnedAchievement) => earnedAchievement.id)
+          .map((earnedAchievement) => earnedAchievement.serviceAchievementId)
           .includes(gameAchievement.serviceAchievementId)
     );
 
@@ -326,12 +320,13 @@ export class DbService implements OnModuleInit {
             data: allEarnedAchievements.map((achievement) => {
               const storedGameAchievement = allStoredAchievements.find(
                 (gameAchievement) =>
-                  gameAchievement.serviceAchievementId === achievement.id
+                  gameAchievement.serviceAchievementId ===
+                  achievement.serviceAchievementId
               );
 
               return {
                 gameAchievementId: storedGameAchievement.id,
-                earnedOn: achievement.timeUnlocked
+                earnedOn: achievement.earnedOn
               };
             })
           }
@@ -340,34 +335,22 @@ export class DbService implements OnModuleInit {
     });
   }
 
-  async addRetroachievementsGame(
-    retroachievementsGame: RaUserGameCompletion,
-    gameAchievements: RaAchievement[],
-    playerCount = 1
-  ) {
+  async addRetroachievementsGame(mappedCompleteGame: MappedCompleteGame) {
     this.#logger.log(
-      `Adding RA title ${retroachievementsGame.title}:${retroachievementsGame.gameId} with ${gameAchievements.length} achievements`
+      `Adding RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
     );
 
     const addedGame = await this.db.game.create({
       data: {
         gamingService: "RA",
-        name: retroachievementsGame.title,
-        serviceTitleId: String(retroachievementsGame.gameId),
-        knownPlayerCount: playerCount,
-        gamePlatforms: [retroachievementsGame.consoleName],
+        name: mappedCompleteGame.name,
+        serviceTitleId: mappedCompleteGame.serviceTitleId,
+        knownPlayerCount: mappedCompleteGame.knownPlayerCount,
+        gamePlatforms: mappedCompleteGame.gamePlatforms,
         isStale: false,
         achievements: {
           createMany: {
-            data: gameAchievements.map((gameAchievement) => ({
-              name: gameAchievement.title,
-              description: String(gameAchievement.description),
-              serviceAchievementId: String(gameAchievement.id),
-              vanillaPoints: gameAchievement.points,
-              ratioPoints: gameAchievement.trueRatio,
-              sourceImageUrl: `https://media.retroachievements.org/Badge/${gameAchievement.badgeName}.png`,
-              knownEarnerCount: gameAchievement.numAwardedHardcore ?? 0
-            })),
+            data: mappedCompleteGame.achievements,
             skipDuplicates: true
           }
         }
@@ -375,32 +358,31 @@ export class DbService implements OnModuleInit {
     });
 
     this.#logger.log(
-      `Added RA title ${retroachievementsGame.title}:${retroachievementsGame.gameId} with ${gameAchievements.length} achievements as ${addedGame.id}`
+      `Added RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${addedGame.id}`
     );
 
     return addedGame;
   }
 
   async updateRetroachievementsGame(
-    retroachievementsGame: RaUserGameCompletion,
-    gameAchievements: RaAchievement[],
+    mappedCompleteGame: MappedCompleteGame,
     playerCount = 1
   ) {
     this.#logger.log(
-      `Updating RA title ${retroachievementsGame.title}:${retroachievementsGame.gameId} with ${gameAchievements.length} achievements`
+      `Updating RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
     );
 
     const updatedGame = await this.db.game.update({
       where: {
         gamingService_serviceTitleId: {
           gamingService: "RA",
-          serviceTitleId: String(retroachievementsGame.gameId)
+          serviceTitleId: mappedCompleteGame.serviceTitleId
         }
       },
       data: {
-        name: retroachievementsGame.title,
+        name: mappedCompleteGame.name,
         knownPlayerCount: playerCount,
-        gamePlatforms: [retroachievementsGame.consoleName],
+        gamePlatforms: mappedCompleteGame.gamePlatforms,
         isStale: false
       }
     });
@@ -408,15 +390,9 @@ export class DbService implements OnModuleInit {
     // Create any missing achievements.
     await this.db.gameAchievement.createMany({
       skipDuplicates: true,
-      data: gameAchievements.map((gameAchievement) => ({
-        gameId: updatedGame.id,
-        name: gameAchievement.title,
-        description: String(gameAchievement.description),
-        serviceAchievementId: String(gameAchievement.id),
-        vanillaPoints: gameAchievement.points,
-        ratioPoints: gameAchievement.trueRatio,
-        sourceImageUrl: `https://media.retroachievements.org/Badge/${gameAchievement.badgeName}.png`,
-        knownEarnerCount: gameAchievement.numAwardedHardcore ?? 0
+      data: mappedCompleteGame.achievements.map((achievement) => ({
+        ...achievement,
+        gameId: updatedGame.id
       }))
     });
 
@@ -425,83 +401,12 @@ export class DbService implements OnModuleInit {
       where: { gameId: updatedGame.id }
     });
 
-    const batchUpdateTransaction: PrismaPromise<any>[] = [];
+    const batchUpdateTransaction: PrismaPromise<unknown>[] = [];
     for (const storedAchievement of allGameStoredAchievements) {
-      const foundGameAchievement = gameAchievements.find(
+      const foundGameAchievement = mappedCompleteGame.achievements.find(
         (gameAchievement) =>
-          String(gameAchievement.id) === storedAchievement.serviceAchievementId
-      );
-
-      batchUpdateTransaction.push(
-        this.db.gameAchievement.update({
-          where: { id: storedAchievement.id },
-          data: {
-            name: foundGameAchievement.title,
-            description: String(foundGameAchievement.description),
-            vanillaPoints: foundGameAchievement.points,
-            ratioPoints: foundGameAchievement.trueRatio,
-            sourceImageUrl: `https://media.retroachievements.org/Badge/${foundGameAchievement.badgeName}.png`,
-            knownEarnerCount: foundGameAchievement.numAwardedHardcore ?? 0
-          }
-        })
-      );
-    }
-
-    await this.db.$transaction(batchUpdateTransaction);
-
-    this.#logger.log(
-      `Updated RA title ${retroachievementsGame.title}:${retroachievementsGame.gameId} with ${gameAchievements.length} achievements as ${updatedGame.id}`
-    );
-
-    return updatedGame;
-  }
-
-  async updateXboxGame(xboxGame: XboxDeepGameInfo) {
-    const gameAchievements = xboxGame.achievements;
-
-    this.#logger.log(
-      `Updating XBOX title ${xboxGame.name}:${xboxGame.titleId} with ${gameAchievements.length} achievements`
-    );
-
-    const updatedGame = await this.db.game.update({
-      where: {
-        gamingService_serviceTitleId: {
-          gamingService: "XBOX",
-          serviceTitleId: xboxGame.titleId
-        }
-      },
-      data: {
-        name: xboxGame.name,
-        gamePlatforms: xboxGame.devices,
-        xboxAchievementsSchemaKind: xboxGame.achievementsSchemaKind,
-        isStale: false
-      }
-    });
-
-    // Create any missing achievements.
-    await this.db.gameAchievement.createMany({
-      skipDuplicates: true,
-      data: gameAchievements.map((gameAchievement) => ({
-        gameId: updatedGame.id,
-        name: gameAchievement.name,
-        description: gameAchievement.description,
-        vanillaPoints: gameAchievement.gamerscore,
-        sourceImageUrl: gameAchievement.imageUrl ?? undefined,
-        serviceAchievementId: gameAchievement.id,
-        knownEarnerPercentage: gameAchievement.rarityPercentage
-      }))
-    });
-
-    // Update all existing achievements.
-    const allGameStoredAchievements = await this.db.gameAchievement.findMany({
-      where: { gameId: updatedGame.id }
-    });
-
-    const batchUpdateTransaction: PrismaPromise<any>[] = [];
-    for (const storedAchievement of allGameStoredAchievements) {
-      const foundGameAchievement = gameAchievements.find(
-        (gameAchievement) =>
-          String(gameAchievement.id) === storedAchievement.serviceAchievementId
+          gameAchievement.serviceAchievementId ===
+          storedAchievement.serviceAchievementId
       );
 
       batchUpdateTransaction.push(
@@ -509,10 +414,11 @@ export class DbService implements OnModuleInit {
           where: { id: storedAchievement.id },
           data: {
             name: foundGameAchievement.name,
-            description: String(foundGameAchievement.description),
-            vanillaPoints: foundGameAchievement.gamerscore,
-            sourceImageUrl: foundGameAchievement.imageUrl ?? undefined,
-            knownEarnerPercentage: foundGameAchievement.rarityPercentage
+            description: foundGameAchievement.description,
+            vanillaPoints: foundGameAchievement.vanillaPoints,
+            ratioPoints: foundGameAchievement.ratioPoints,
+            sourceImageUrl: foundGameAchievement.sourceImageUrl,
+            knownEarnerCount: foundGameAchievement.knownEarnerCount ?? 0
           }
         })
       );
@@ -521,36 +427,31 @@ export class DbService implements OnModuleInit {
     await this.db.$transaction(batchUpdateTransaction);
 
     this.#logger.log(
-      `Updating XBOX title ${xboxGame.name}:${xboxGame.titleId} with ${gameAchievements.length} achievements`
+      `Updated RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${updatedGame.id}`
     );
 
     return updatedGame;
   }
 
-  async addXboxGame(xboxGame: XboxDeepGameInfo) {
-    const gameAchievements = xboxGame.achievements;
-
+  async addXboxGame(mappedCompleteGame: MappedCompleteGame) {
     this.#logger.log(
-      `Adding XBOX title ${xboxGame.name}:${xboxGame.titleId} with ${gameAchievements.length} achievements`
+      `Adding XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
     );
 
     const addedGame = await this.db.game.create({
       data: {
         gamingService: "XBOX",
-        name: xboxGame.name,
-        serviceTitleId: xboxGame.titleId,
-        gamePlatforms: xboxGame.devices,
-        xboxAchievementsSchemaKind: xboxGame.achievementsSchemaKind,
+        name: mappedCompleteGame.name,
+        serviceTitleId: mappedCompleteGame.serviceTitleId,
+        gamePlatforms: mappedCompleteGame.gamePlatforms,
+        xboxAchievementsSchemaKind:
+          mappedCompleteGame.xboxAchievementsSchemaKind,
         isStale: false,
         achievements: {
           createMany: {
-            data: gameAchievements.map((gameAchievement) => ({
-              name: gameAchievement.name,
-              description: gameAchievement.description,
-              serviceAchievementId: gameAchievement.id,
-              vanillaPoints: gameAchievement.gamerscore,
-              sourceImageUrl: gameAchievement.imageUrl ?? undefined,
-              knownEarnerPercentage: gameAchievement.rarityPercentage
+            data: mappedCompleteGame.achievements.map((achievement) => ({
+              ...achievement,
+              earnedOn: undefined
             })),
             skipDuplicates: true
           }
@@ -559,9 +460,76 @@ export class DbService implements OnModuleInit {
     });
 
     this.#logger.log(
-      `Added XBOX title ${xboxGame.name}:${xboxGame.titleId} with ${gameAchievements.length} achievements as ${addedGame.id}`
+      `Added XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${addedGame.id}`
     );
 
     return addedGame;
+  }
+
+  async updateXboxGame(mappedCompleteGame: MappedCompleteGame) {
+    this.#logger.log(
+      `Updating XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
+    );
+
+    const updatedGame = await this.db.game.update({
+      where: {
+        gamingService_serviceTitleId: {
+          gamingService: "XBOX",
+          serviceTitleId: mappedCompleteGame.serviceTitleId
+        }
+      },
+      data: {
+        name: mappedCompleteGame.name,
+        gamePlatforms: mappedCompleteGame.gamePlatforms,
+        xboxAchievementsSchemaKind:
+          mappedCompleteGame.xboxAchievementsSchemaKind,
+        isStale: false
+      }
+    });
+
+    // Create any missing achievements.
+    await this.db.gameAchievement.createMany({
+      skipDuplicates: true,
+      data: mappedCompleteGame.achievements.map((achievement) => ({
+        ...achievement,
+        earnedOn: undefined,
+        gameId: updatedGame.id
+      }))
+    });
+
+    // Update all existing achievements.
+    const allGameStoredAchievements = await this.db.gameAchievement.findMany({
+      where: { gameId: updatedGame.id }
+    });
+
+    const batchUpdateTransaction: PrismaPromise<unknown>[] = [];
+    for (const storedAchievement of allGameStoredAchievements) {
+      const foundGameAchievement = mappedCompleteGame.achievements.find(
+        (gameAchievement) =>
+          gameAchievement.serviceAchievementId ===
+          storedAchievement.serviceAchievementId
+      );
+
+      batchUpdateTransaction.push(
+        this.db.gameAchievement.update({
+          where: { id: storedAchievement.id },
+          data: {
+            name: foundGameAchievement.name,
+            description: foundGameAchievement.description,
+            vanillaPoints: foundGameAchievement.vanillaPoints,
+            sourceImageUrl: foundGameAchievement.sourceImageUrl,
+            knownEarnerPercentage: foundGameAchievement.knownEarnerPercentage
+          }
+        })
+      );
+    }
+
+    await this.db.$transaction(batchUpdateTransaction);
+
+    this.#logger.log(
+      `Updated XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
+    );
+
+    return updatedGame;
   }
 }

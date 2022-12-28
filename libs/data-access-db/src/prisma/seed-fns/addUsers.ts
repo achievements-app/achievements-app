@@ -21,8 +21,8 @@ const newUsers: NewUser[] = [
       { accountUserName: "WCopeland", gamingService: "RA" },
       { accountUserName: "UsableDayv", gamingService: "XBOX" },
       { accountUserName: "WCopeland1", gamingService: "XBOX" },
-      { accountUserName: "SiegfriedX", gamingService: "XBOX" },
-      { accountUserName: "ViaFix", gamingService: "XBOX" }
+      { accountUserName: "ViaFix", gamingService: "XBOX" },
+      { accountUserName: "HippopotamusRex", gamingService: "RA" }
     ]
   },
   {
