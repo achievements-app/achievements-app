@@ -2,6 +2,7 @@ import { InjectQueue } from "@nestjs/bull";
 import { Injectable } from "@nestjs/common";
 import type { Queue } from "bull";
 
+import type { MappedGame } from "@achievements-app/data-access-common-models";
 import type {
   Game,
   TrackedAccount,
@@ -14,7 +15,6 @@ import { XboxService } from "@/api/shared/integrations/xbox/xbox.service";
 import { XboxDataService } from "@/api/shared/integrations/xbox/xbox-data.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import type { MappedGame } from "../common/models";
 import { SyncQueuePayload, SyncUserGameProgressPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 
@@ -47,7 +47,7 @@ export class SyncService {
           serviceTitleId
         );
 
-      const addedGame = await this.dbService.addRetroachievementsGame(
+      const addedGame = await this.dbService.addMappedCompleteGame(
         completeGameMetadata
       );
 
@@ -80,7 +80,7 @@ export class SyncService {
             targetUserGame.xboxAchievementsSchemaKind as "legacy" | "modern"
           );
 
-        const addedGame = await this.dbService.addXboxGame(
+        const addedGame = await this.dbService.addMappedCompleteGame(
           completeGameMetadata
         );
 
@@ -115,7 +115,7 @@ export class SyncService {
             serviceTitleId
           );
 
-        const updatedGame = await this.dbService.updateRetroachievementsGame(
+        const updatedGame = await this.dbService.updateMappedCompleteGame(
           completeGameMetadata
         );
 
@@ -149,7 +149,7 @@ export class SyncService {
             targetUserGame.xboxAchievementsSchemaKind as "legacy" | "modern"
           );
 
-        const updatedGame = await this.dbService.updateXboxGame(
+        const updatedGame = await this.dbService.updateMappedCompleteGame(
           completeGameMetadata
         );
 
@@ -183,12 +183,11 @@ export class SyncService {
         serviceTitleId
       );
 
-    const newUserGameProgress =
-      await this.dbService.addNewRetroachievementsUserGameProgress(
-        storedGameId,
-        trackedAccount,
-        userEarnedAchievements
-      );
+    const newUserGameProgress = await this.dbService.addNewUserGameProgress(
+      storedGameId,
+      trackedAccount,
+      userEarnedAchievements
+    );
 
     this.#logger.log(
       `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGameId} as ${newUserGameProgress.id}`
@@ -215,10 +214,10 @@ export class SyncService {
         storedGame.xboxAchievementsSchemaKind as "legacy" | "modern"
       );
 
-    const newUserGameProgress = await this.dbService.addNewXboxUserGameProgress(
+    const newUserGameProgress = await this.dbService.addNewUserGameProgress(
       storedGame.id,
       trackedAccount,
-      serviceUserGameProgress
+      serviceUserGameProgress.achievements
     );
 
     this.#logger.log(
@@ -250,13 +249,10 @@ export class SyncService {
     // TODO: This would be a good place to update the stored achievements
     // for the game. It's likely they're stale, and we're already doing
     // work on them anyway. So instead of a find, this should be an upsert.
-    const allGameAchievements =
-      await this.dbService.findAllStoredGameAchievements(storedGameId);
 
-    await this.dbService.updateExistingRetroachievementsUserGameProgress(
+    await this.dbService.updateExistingUserGameProgress(
       existingUserGameProgress,
-      earnedGameAchievements,
-      allGameAchievements
+      earnedGameAchievements
     );
 
     this.#logger.log(
@@ -290,7 +286,7 @@ export class SyncService {
       (achievement) => !!achievement.earnedOn
     );
 
-    // Has missing achievements?
+    // Does the game have any missing achievements?
     const allGameAchievementServiceIds = allGameAchievements.map(
       (gameAchievement) => gameAchievement.serviceAchievementId
     );
@@ -308,12 +304,14 @@ export class SyncService {
         `Marking XBOX:${storedGame.name}:${storedGame.id} as stale`
       );
       await this.dbService.markGameAsStale(storedGame.id);
+
+      // FIXME: Update the game before continuing on. Without an update
+      // to the game, `updateExistingUserGameProgress()` will fail.
     }
 
-    await this.dbService.updateExistingXboxUserGameProgress(
+    await this.dbService.updateExistingUserGameProgress(
       existingUserGameProgress,
-      earnedGameAchievements,
-      allGameAchievements
+      earnedGameAchievements
     );
   }
 

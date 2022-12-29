@@ -1,4 +1,4 @@
-import type { MappedGameAchievement } from "@/api/common/models";
+import type { MappedGameAchievement } from "@achievements-app/data-access-common-models";
 
 import type { XboxSanitizedAchievementEntity } from "../models";
 

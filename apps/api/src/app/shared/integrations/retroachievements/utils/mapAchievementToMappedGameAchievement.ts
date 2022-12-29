@@ -1,6 +1,6 @@
 import type { Achievement } from "retroachievements-js";
 
-import type { MappedGameAchievement } from "@/api/common/models";
+import type { MappedGameAchievement } from "@achievements-app/data-access-common-models";
 
 export const mapAchievementToMappedGameAchievement = (
   achievement: Achievement

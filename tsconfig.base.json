@@ -16,8 +16,14 @@
     "baseUrl": ".",
     "paths": {
       "@/api/*": ["apps/api/src/app/*"],
+      "@achievements-app/data-access-common-models": [
+        "libs/data-access-common-models/src/index.ts"
+      ],
       "@achievements-app/data-access-db": ["libs/data-access-db/src/index.ts"],
-      "@achievements-app/utils-db": ["libs/utils-db/src/index.ts"]
+      "@achievements-app/utils-db": ["libs/utils-db/src/index.ts"],
+      "@achievements-app/utils-model-generators": [
+        "libs/utils-model-generators/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]

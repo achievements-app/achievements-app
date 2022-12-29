@@ -6,6 +6,10 @@ import {
 } from "@nestjs/common";
 
 import type {
+  MappedCompleteGame,
+  MappedGameAchievement
+} from "@achievements-app/data-access-common-models";
+import type {
   GameAchievement,
   GamingService,
   PrismaPromise,
@@ -13,11 +17,6 @@ import type {
   UserGameProgress
 } from "@achievements-app/data-access-db";
 import { db } from "@achievements-app/data-access-db";
-
-import type {
-  MappedCompleteGame,
-  MappedGameAchievement
-} from "@/api/common/models";
 
 @Injectable()
 export class DbService implements OnModuleInit {
@@ -34,12 +33,46 @@ export class DbService implements OnModuleInit {
     });
   }
 
-  async addNewRetroachievementsUserGameProgress(
+  async addMappedCompleteGame(mappedCompleteGame: MappedCompleteGame) {
+    this.#logger.log(
+      `Adding ${mappedCompleteGame.gamingService} title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
+    );
+
+    const addedGame = await this.db.game.create({
+      data: {
+        gamingService: mappedCompleteGame.gamingService,
+        name: mappedCompleteGame.name,
+        serviceTitleId: mappedCompleteGame.serviceTitleId,
+        knownPlayerCount: mappedCompleteGame.knownPlayerCount,
+        gamePlatforms: mappedCompleteGame.gamePlatforms,
+        xboxAchievementsSchemaKind:
+          mappedCompleteGame.xboxAchievementsSchemaKind,
+        isStale: false,
+        achievements: {
+          createMany: {
+            data: mappedCompleteGame.achievements.map((achievement) => ({
+              ...achievement,
+              earnedOn: undefined
+            })),
+            skipDuplicates: true
+          }
+        }
+      }
+    });
+
+    this.#logger.log(
+      `Added ${mappedCompleteGame.gamingService} title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${addedGame.id}`
+    );
+
+    return addedGame;
+  }
+
+  async addNewUserGameProgress(
     storedGameId: string,
     trackedAccount: TrackedAccount,
     serviceEarnedAchievements: MappedGameAchievement[]
   ) {
-    const allGameAchievements = await this.findAllStoredGameAchievements(
+    const allGameStoredAchievements = await this.findAllStoredGameAchievements(
       storedGameId
     );
 
@@ -51,74 +84,29 @@ export class DbService implements OnModuleInit {
           createMany: {
             skipDuplicates: true,
             data: serviceEarnedAchievements.map((achievement) => {
-              const storedGameAchievement = allGameAchievements.find(
+              const foundStoredGameAchievement = allGameStoredAchievements.find(
                 (gameAchievement) =>
                   gameAchievement.serviceAchievementId ===
                   achievement.serviceAchievementId
               );
 
-              return {
-                gameAchievementId: storedGameAchievement.id,
-                // TODO: is this timezone okay?
-                earnedOn: achievement.earnedOn
-              };
+              try {
+                return {
+                  gameAchievementId: foundStoredGameAchievement.id,
+                  // TODO: is this timezone okay?
+                  earnedOn: achievement.earnedOn
+                };
+              } catch (error) {
+                this.#logger.error(
+                  `Tried to log progress for a missing achievement. Marking game ${storedGameId} as stale.`,
+                  error
+                );
+
+                this.markGameAsStale(storedGameId);
+              }
             })
           }
         }
-      }
-    });
-  }
-
-  async addNewXboxUserGameProgress(
-    storedGameId: string,
-    trackedAccount: TrackedAccount,
-    serviceUserGameProgress: MappedCompleteGame
-  ) {
-    const allGameAchievements = await this.findAllStoredGameAchievements(
-      storedGameId
-    );
-
-    return await this.db.userGameProgress.create({
-      data: {
-        gameId: storedGameId,
-        trackedAccountId: trackedAccount.id,
-        earnedAchievements: {
-          createMany: {
-            skipDuplicates: true,
-            data: serviceUserGameProgress.achievements
-              .filter((achievement) => achievement.earnedOn)
-              .map((achievement) => {
-                const foundStoredGameAchievement = allGameAchievements.find(
-                  (gameAchievement) =>
-                    gameAchievement.serviceAchievementId ===
-                    achievement.serviceAchievementId
-                );
-
-                // If we fall into this block, the function will almost certainly fail.
-                // We need to mark the game as stale.
-                if (!foundStoredGameAchievement) {
-                  this.markGameAsStale(storedGameId);
-                }
-
-                return {
-                  gameAchievementId: foundStoredGameAchievement.id,
-                  earnedOn: achievement.earnedOn
-                };
-              })
-          }
-        }
-      }
-    });
-  }
-
-  /**
-   * Given a UserGameProgress entity, wipe all UserEarnedAchievement
-   * entities that are associated with it.
-   */
-  async cleanUserGameProgress(userGameProgress: UserGameProgress) {
-    return await this.db.userEarnedAchievement.deleteMany({
-      where: {
-        gameProgressEntityId: userGameProgress.id
       }
     });
   }
@@ -161,17 +149,6 @@ export class DbService implements OnModuleInit {
       include: {
         game: true,
         earnedAchievements: { include: { achievement: true } }
-      }
-    });
-  }
-
-  async findExistingGame(gamingService: GamingService, serviceTitleId: string) {
-    return await this.db.game.findUnique({
-      where: {
-        gamingService_serviceTitleId: {
-          gamingService,
-          serviceTitleId
-        }
       }
     });
   }
@@ -221,11 +198,13 @@ export class DbService implements OnModuleInit {
   }
 
   async markGameAsStale(gameId: string) {
-    await this.db.game.update({
+    const updatedGame = await this.db.game.update({
       where: { id: gameId },
       data: { isStale: true }
     });
+
     this.#logger.log(`Marked game ${gameId} as stale`);
+    return updatedGame;
   }
 
   /**
@@ -236,78 +215,35 @@ export class DbService implements OnModuleInit {
    */
   async storeTrackedAccountXuid(trackedAccount: TrackedAccount, xuid: string) {
     return await this.db.trackedAccount.update({
-      where: {
-        id: trackedAccount.id
-      },
-      data: {
-        xboxXuid: xuid
-      }
+      where: { id: trackedAccount.id },
+      data: { xboxXuid: xuid }
     });
   }
 
-  async updateExistingRetroachievementsUserGameProgress(
+  async updateExistingUserGameProgress(
     existingUserGameProgress: UserGameProgress,
-    allEarnedAchievements: MappedGameAchievement[],
-    allStoredAchievements: GameAchievement[]
+    allEarnedAchievements: MappedGameAchievement[]
   ) {
+    const allGameStoredAchievements = await this.findAllStoredGameAchievements(
+      existingUserGameProgress.gameId
+    );
+
     this.#logger.log(
       `Updating UserGameProgress for ${existingUserGameProgress.trackedAccountId}:${existingUserGameProgress.id}`
     );
 
-    // Before doing anything, purge the list of achievements associated
-    // with the UserGameProgress entity. It's easier and faster to do this than
-    // try to filter by what's already unlocked.
-    await this.cleanUserGameProgress(existingUserGameProgress);
-
-    return await this.db.userGameProgress.update({
-      where: { id: existingUserGameProgress.id },
-      include: { earnedAchievements: true },
-      data: {
-        earnedAchievements: {
-          createMany: {
-            data: allEarnedAchievements.map((achievement) => {
-              const storedGameAchievement = allStoredAchievements.find(
-                (storedAchievement) =>
-                  storedAchievement.serviceAchievementId ===
-                  achievement.serviceAchievementId
-              );
-
-              // TODO: Throw error if storedGameAchievement not found.
-
-              return {
-                gameAchievementId: storedGameAchievement.id,
-                // TODO: is this timezone okay?
-                earnedOn: achievement.earnedOn
-              };
-            })
-          }
-        }
-      }
-    });
-  }
-
-  async updateExistingXboxUserGameProgress(
-    existingUserGameProgress: UserGameProgress,
-    allEarnedAchievements: MappedGameAchievement[],
-    allStoredAchievements: GameAchievement[]
-  ) {
-    this.#logger.log(
-      `Updating UserGameProgress for ${existingUserGameProgress.trackedAccountId}:${existingUserGameProgress.id}`
-    );
-
-    // Before doing anything, purge the list of achievements associated
-    // with the UserGameProgress entity. It's easier and faster to do this than
-    // try to filter by what's already unlocked.
-    await this.cleanUserGameProgress(existingUserGameProgress);
-
-    const storedEarnedAchievements = allStoredAchievements.filter(
-      (gameAchievement) =>
+    // If we are missing any achievements from the game that the user
+    // has earned, we cannot actually continue. We'll throw an error, and
+    // it's very likely the caller of this method will mark the game as stale.
+    // After being marked as stale, the game will be refreshed and subsequent
+    // calls of this method with the same arguments will likely not throw.
+    const isMissingAnyStoredAchievements =
+      this.#getIsMissingUserGameProgressAchievement(
+        allGameStoredAchievements,
         allEarnedAchievements
-          .map((earnedAchievement) => earnedAchievement.serviceAchievementId)
-          .includes(gameAchievement.serviceAchievementId)
-    );
+      );
 
-    if (storedEarnedAchievements.length !== allEarnedAchievements.length) {
+    if (isMissingAnyStoredAchievements) {
       this.#logger.warn(
         `Missing achievement(s) for UserGameProgress on game XBOX:${existingUserGameProgress.gameId}`
       );
@@ -315,6 +251,10 @@ export class DbService implements OnModuleInit {
       throw new Error("Missing achievement");
     }
 
+    // Purge the list of achievements associated with the UserGameProgress entity.
+    // It's easier and faster to do this than try to filter by what's already unlocked.
+    await this.#cleanUserGameProgress(existingUserGameProgress);
+
     return await this.db.userGameProgress.update({
       where: { id: existingUserGameProgress.id },
       include: { earnedAchievements: true },
@@ -322,14 +262,15 @@ export class DbService implements OnModuleInit {
         earnedAchievements: {
           createMany: {
             data: allEarnedAchievements.map((achievement) => {
-              const storedGameAchievement = allStoredAchievements.find(
-                (gameAchievement) =>
-                  gameAchievement.serviceAchievementId ===
+              const storedGameAchievement = allGameStoredAchievements.find(
+                (storedAchievement) =>
+                  storedAchievement.serviceAchievementId ===
                   achievement.serviceAchievementId
               );
 
               return {
                 gameAchievementId: storedGameAchievement.id,
+                // TODO: #RA is this timezone okay?
                 earnedOn: achievement.earnedOn
               };
             })
@@ -339,155 +280,29 @@ export class DbService implements OnModuleInit {
     });
   }
 
-  async addRetroachievementsGame(mappedCompleteGame: MappedCompleteGame) {
-    this.#logger.log(
-      `Adding RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
-    );
-
-    const addedGame = await this.db.game.create({
-      data: {
-        gamingService: "RA",
-        name: mappedCompleteGame.name,
-        serviceTitleId: mappedCompleteGame.serviceTitleId,
-        knownPlayerCount: mappedCompleteGame.knownPlayerCount,
-        gamePlatforms: mappedCompleteGame.gamePlatforms,
-        isStale: false,
-        achievements: {
-          createMany: {
-            data: mappedCompleteGame.achievements,
-            skipDuplicates: true
-          }
-        }
-      }
-    });
-
-    this.#logger.log(
-      `Added RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${addedGame.id}`
-    );
-
-    return addedGame;
-  }
-
-  async updateRetroachievementsGame(
+  async updateMappedCompleteGame(
     mappedCompleteGame: MappedCompleteGame,
-    playerCount = 1
+    // TODO: #RA We can get this value for RA, but aren't currently.
+    knownPlayerCount = 1
   ) {
     this.#logger.log(
-      `Updating RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
+      `Updating ${mappedCompleteGame.gamingService} title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
     );
 
     const updatedGame = await this.db.game.update({
       where: {
         gamingService_serviceTitleId: {
-          gamingService: "RA",
+          gamingService: mappedCompleteGame.gamingService,
           serviceTitleId: mappedCompleteGame.serviceTitleId
         }
       },
       data: {
+        knownPlayerCount,
         name: mappedCompleteGame.name,
-        knownPlayerCount: playerCount,
         gamePlatforms: mappedCompleteGame.gamePlatforms,
-        isStale: false
-      }
-    });
-
-    // Create any missing achievements.
-    await this.db.gameAchievement.createMany({
-      skipDuplicates: true,
-      data: mappedCompleteGame.achievements.map((achievement) => ({
-        ...achievement,
-        gameId: updatedGame.id
-      }))
-    });
-
-    // Update all existing achievements.
-    const allGameStoredAchievements = await this.db.gameAchievement.findMany({
-      where: { gameId: updatedGame.id }
-    });
-
-    const batchUpdateTransaction: PrismaPromise<unknown>[] = [];
-    for (const storedAchievement of allGameStoredAchievements) {
-      const foundGameAchievement = mappedCompleteGame.achievements.find(
-        (gameAchievement) =>
-          gameAchievement.serviceAchievementId ===
-          storedAchievement.serviceAchievementId
-      );
-
-      batchUpdateTransaction.push(
-        this.db.gameAchievement.update({
-          where: { id: storedAchievement.id },
-          data: {
-            name: foundGameAchievement.name,
-            description: foundGameAchievement.description,
-            vanillaPoints: foundGameAchievement.vanillaPoints,
-            ratioPoints: foundGameAchievement.ratioPoints,
-            sourceImageUrl: foundGameAchievement.sourceImageUrl,
-            knownEarnerCount: foundGameAchievement.knownEarnerCount ?? 0
-          }
-        })
-      );
-    }
-
-    await this.db.$transaction(batchUpdateTransaction);
-
-    this.#logger.log(
-      `Updated RA title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${updatedGame.id}`
-    );
-
-    return updatedGame;
-  }
-
-  async addXboxGame(mappedCompleteGame: MappedCompleteGame) {
-    this.#logger.log(
-      `Adding XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
-    );
-
-    const addedGame = await this.db.game.create({
-      data: {
-        gamingService: "XBOX",
-        name: mappedCompleteGame.name,
-        serviceTitleId: mappedCompleteGame.serviceTitleId,
-        gamePlatforms: mappedCompleteGame.gamePlatforms,
-        xboxAchievementsSchemaKind:
-          mappedCompleteGame.xboxAchievementsSchemaKind,
         isStale: false,
-        achievements: {
-          createMany: {
-            data: mappedCompleteGame.achievements.map((achievement) => ({
-              ...achievement,
-              earnedOn: undefined
-            })),
-            skipDuplicates: true
-          }
-        }
-      }
-    });
-
-    this.#logger.log(
-      `Added XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${addedGame.id}`
-    );
-
-    return addedGame;
-  }
-
-  async updateXboxGame(mappedCompleteGame: MappedCompleteGame) {
-    this.#logger.log(
-      `Updating XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
-    );
-
-    const updatedGame = await this.db.game.update({
-      where: {
-        gamingService_serviceTitleId: {
-          gamingService: "XBOX",
-          serviceTitleId: mappedCompleteGame.serviceTitleId
-        }
-      },
-      data: {
-        name: mappedCompleteGame.name,
-        gamePlatforms: mappedCompleteGame.gamePlatforms,
         xboxAchievementsSchemaKind:
-          mappedCompleteGame.xboxAchievementsSchemaKind,
-        isStale: false
+          mappedCompleteGame.xboxAchievementsSchemaKind
       }
     });
 
@@ -521,7 +336,9 @@ export class DbService implements OnModuleInit {
             name: foundGameAchievement.name,
             description: foundGameAchievement.description,
             vanillaPoints: foundGameAchievement.vanillaPoints,
+            ratioPoints: foundGameAchievement.ratioPoints,
             sourceImageUrl: foundGameAchievement.sourceImageUrl,
+            knownEarnerCount: foundGameAchievement.knownEarnerCount ?? 0,
             knownEarnerPercentage: foundGameAchievement.knownEarnerPercentage
           }
         })
@@ -531,9 +348,43 @@ export class DbService implements OnModuleInit {
     await this.db.$transaction(batchUpdateTransaction);
 
     this.#logger.log(
-      `Updated XBOX title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`
+      `Updated ${mappedCompleteGame.gamingService} title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements as ${updatedGame.id}`
     );
 
     return updatedGame;
+  }
+
+  /**
+   * Given a UserGameProgress entity, wipe all UserEarnedAchievement
+   * entities that are associated with it.
+   */
+  async #cleanUserGameProgress(userGameProgress: UserGameProgress) {
+    return await this.db.userEarnedAchievement.deleteMany({
+      where: {
+        gameProgressEntityId: userGameProgress.id
+      }
+    });
+  }
+
+  /**
+   * Determine if any of the achievements a gaming service reports as
+   * earned by the user are, in fact, missing from our database. This
+   * commonly happens when an achievement is added to a game after
+   * the game (or achievement set) has been published.
+   */
+  #getIsMissingUserGameProgressAchievement(
+    targetGameStoredAchievements: GameAchievement[],
+    reportedEarnedAchievements: MappedGameAchievement[]
+  ) {
+    const storedEarnedAchievements = targetGameStoredAchievements.filter(
+      (gameAchievement) =>
+        reportedEarnedAchievements
+          .map((earnedAchievement) => earnedAchievement.serviceAchievementId)
+          .includes(gameAchievement.serviceAchievementId)
+    );
+
+    return (
+      storedEarnedAchievements.length !== reportedEarnedAchievements.length
+    );
   }
 }

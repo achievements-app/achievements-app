@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
 
-import type { MappedCompleteGame, MappedGame } from "@/api/common/models";
+import type {
+  MappedCompleteGame,
+  MappedGame
+} from "@achievements-app/data-access-common-models";
 
 import { mapTitleHistoryEntityToStoredGame } from "./utils/mapTitleHistoryEntityToStoredGame";
 import { mapXboxDeepGameInfoToCompleteGame } from "./utils/mapXboxDeepGameInfoToCompleteGame";

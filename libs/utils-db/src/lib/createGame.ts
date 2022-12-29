@@ -7,7 +7,7 @@ export const createGame = (gameProps?: Partial<Game>) => {
     data: {
       gamingService: faker.helpers.arrayElement(["RA", "XBOX", "PSN"]),
       name: faker.commerce.productName(),
-      serviceTitleId: faker.random.numeric(100000),
+      serviceTitleId: faker.datatype.uuid(),
       isStale: false,
       ...gameProps
     }

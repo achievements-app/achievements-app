@@ -1,6 +1,6 @@
 import { UserGameCompletion } from "retroachievements-js";
 
-import type { MappedGame } from "@/api/common/models";
+import type { MappedGame } from "@achievements-app/data-access-common-models";
 
 export const mapUserGameCompletionToStoredGame = (
   userGameCompletion: UserGameCompletion

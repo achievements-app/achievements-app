@@ -1,4 +1,4 @@
-import type { MappedCompleteGame } from "@/api/common/models";
+import type { MappedCompleteGame } from "@achievements-app/data-access-common-models";
 
 import type { XboxDeepGameInfo } from "../models";
 import { mapXboxAchievementToMappedGameAchievement } from "./mapXboxAchievementToMappedGameAchievement";

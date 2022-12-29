@@ -4,7 +4,7 @@ import type {
   MappedCompleteGame,
   MappedGame,
   MappedGameAchievement
-} from "@/api/common/models";
+} from "@achievements-app/data-access-common-models";
 
 import { RetroachievementsDataService } from "./retroachievements-data.service";
 import { mapAchievementToMappedGameAchievement } from "./utils/mapAchievementToMappedGameAchievement";

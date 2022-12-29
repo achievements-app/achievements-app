@@ -1,6 +1,6 @@
 import type { GameInfoExtended } from "retroachievements-js";
 
-import type { MappedCompleteGame } from "@/api/common/models";
+import type { MappedCompleteGame } from "@achievements-app/data-access-common-models";
 
 import { mapAchievementToMappedGameAchievement } from "./mapAchievementToMappedGameAchievement";
 

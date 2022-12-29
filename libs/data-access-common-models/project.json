@@ -1,0 +1,16 @@
+{
+  "name": "data-access-common-models",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/data-access-common-models/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/data-access-common-models/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}
