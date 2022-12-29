@@ -169,6 +169,46 @@ describe("Service: DbService", () => {
     });
   });
 
+  describe("Method: findCompleteUserGameProgress", () => {
+    it("given a TrackedAccount ID and a stored Game ID, returns an associated UserGameProgress", async () => {
+      // ARRANGE
+      const mockMappedCompleteGame = generateMappedCompleteGame();
+      const mockServiceEarnedAchievements = [
+        mockMappedCompleteGame.achievements[0],
+        mockMappedCompleteGame.achievements[1]
+      ];
+
+      const dbService = app.get(DbService);
+
+      const storedUser = await createUser();
+      const storedGame = await dbService.addMappedCompleteGame(
+        mockMappedCompleteGame
+      );
+
+      const neededTrackedAccount = storedUser.trackedAccounts.find(
+        (trackedAccount) =>
+          trackedAccount.gamingService === storedGame.gamingService
+      );
+
+      await dbService.addNewUserGameProgress(
+        storedGame.id,
+        neededTrackedAccount,
+        mockServiceEarnedAchievements
+      );
+
+      // ACT
+      const completeUserGameProgress =
+        await dbService.findCompleteUserGameProgress(
+          neededTrackedAccount.id,
+          storedGame.id
+        );
+
+      // ASSERT
+      expect(completeUserGameProgress).toBeTruthy();
+      expect(completeUserGameProgress.earnedAchievements.length).toEqual(2);
+    });
+  });
+
   describe("Method: getMultipleGamesExistenceStatus", () => {
     it("given a list of serviceTitleIds, returns a list of games that are missing", async () => {
       // ARRANGE

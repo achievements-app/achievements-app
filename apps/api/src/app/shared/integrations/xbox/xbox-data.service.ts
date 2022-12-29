@@ -33,6 +33,10 @@ export class XboxDataService implements OnModuleInit {
     this.#getNewXboxAuthorization();
   }
 
+  /**
+   * Given a game's titleId, return metadata and the achievements
+   * associated with the game.
+   */
   async fetchDeepGameInfo(
     xuid: string,
     xboxTitleId: string,
@@ -40,8 +44,8 @@ export class XboxDataService implements OnModuleInit {
   ): Promise<XboxDeepGameInfo> {
     // Make these calls at the same time to improve performance.
     const parallelApiCalls = [
-      this.fetchTitleMetadata(xuid, xboxTitleId),
-      this.fetchTitleAchievementsForTitleId(
+      this.#fetchTitleMetadata(xuid, xboxTitleId),
+      this.#fetchTitleAchievementsForTitleId(
         xuid,
         Number(xboxTitleId),
         achievementsSchemaKind
@@ -57,41 +61,6 @@ export class XboxDataService implements OnModuleInit {
       achievementsSchemaKind,
       achievements: titleAchievements
     };
-  }
-
-  /**
-   * Given a user's XUID and a game's titleId, returns metadata about
-   * that game. This only fetches high-level metadata about the game.
-   * This call _does not_ fetch an achievement list.
-   */
-  async fetchTitleMetadata(xuid: string, titleId: string) {
-    const authorization = await this.#useXboxAuthorization();
-    return await fetchTitleMetadata({ xuid, titleId }, authorization);
-  }
-
-  /**
-   * Given an Xbox title ID, probably retrieved via
-   * `fetchCompleteTitleHistoryByXuid()`, retrieve the
-   * complete list of achievements for that title.
-   */
-  async fetchTitleAchievementsForTitleId(
-    xuid: string,
-    titleId: number,
-    titleKind: "legacy" | "modern"
-  ): Promise<XboxSanitizedAchievementEntity[]> {
-    const authorization = await this.#useXboxAuthorization();
-
-    const {
-      achievements
-    }: FetchXboxTitleAchievementsResponse<
-      XboxLegacyAchievementEntity | XboxModernAchievementEntity
-    > = await fetchTitleAchievements(
-      { xuid, titleId },
-      authorization,
-      titleKind as any
-    );
-
-    return achievements.map(this.#sanitizeTitleAchievementEntity);
   }
 
   /**
@@ -128,6 +97,41 @@ export class XboxDataService implements OnModuleInit {
 
     const authorization = await this.#useXboxAuthorization();
     return await getPlayerXUID(gamertag, authorization);
+  }
+
+  /**
+   * Given an Xbox title ID, probably retrieved via
+   * `fetchCompleteTitleHistoryByXuid()`, retrieve the
+   * complete list of achievements for that title.
+   */
+  async #fetchTitleAchievementsForTitleId(
+    xuid: string,
+    titleId: number,
+    titleKind: "legacy" | "modern"
+  ): Promise<XboxSanitizedAchievementEntity[]> {
+    const authorization = await this.#useXboxAuthorization();
+
+    const {
+      achievements
+    }: FetchXboxTitleAchievementsResponse<
+      XboxLegacyAchievementEntity | XboxModernAchievementEntity
+    > = await fetchTitleAchievements(
+      { xuid, titleId },
+      authorization,
+      titleKind as any
+    );
+
+    return achievements.map(this.#sanitizeTitleAchievementEntity);
+  }
+
+  /**
+   * Given a user's XUID and a game's titleId, returns metadata about
+   * that game. This only fetches high-level metadata about the game.
+   * This call _does not_ fetch an achievement list.
+   */
+  async #fetchTitleMetadata(xuid: string, titleId: string) {
+    const authorization = await this.#useXboxAuthorization();
+    return await fetchTitleMetadata({ xuid, titleId }, authorization);
   }
 
   /**
