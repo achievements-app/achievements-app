@@ -13,6 +13,7 @@ export const mapAchievementToMappedGameAchievement = (
     ratioPoints: achievement.trueRatio,
     sourceImageUrl: `https://media.retroachievements.org/Badge/${achievement.badgeName}.png`,
     knownEarnerCount: achievement.numAwardedHardcore ?? 0,
-    earnedOn: achievement?.dateEarnedHardcore?.toISOString() ?? undefined
+    earnedOn: achievement?.dateEarnedHardcore?.toISOString() ?? undefined,
+    isEarned: achievement.dateEarnedHardcore ? true : false
   };
 };

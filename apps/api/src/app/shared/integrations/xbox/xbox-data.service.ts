@@ -30,7 +30,7 @@ export class XboxDataService implements OnModuleInit {
   #logger = new Logger(XboxDataService.name);
 
   async onModuleInit() {
-    this.#getNewXboxAuthorization();
+    this.#currentAuthorization = await this.#getNewXboxAuthorization();
   }
 
   /**
@@ -145,13 +145,13 @@ export class XboxDataService implements OnModuleInit {
     const systemUserName = process.env["XBOX_EMAIL"] ?? "";
     const systemPassword = process.env["XBOX_PASSWORD"] ?? "";
 
-    const newAuthentication = await callXboxAuthenticate(
+    const newAuthorization = await callXboxAuthenticate(
       systemUserName,
       systemPassword
     );
 
     return Object.freeze(
-      newAuthentication as CredentialsAuthenticateInitialResponse
+      newAuthorization as CredentialsAuthenticateInitialResponse
     );
   }
 

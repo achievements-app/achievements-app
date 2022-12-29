@@ -6888,6 +6888,13 @@ psl@^1.1.33:
   resolved "https://registry.yarnpkg.com/psl/-/psl-1.9.0.tgz#d0df2a137f00794565fcaf3b2c00cd09f8d5a5a7"
   integrity sha512-E/ZsdU4HLs/68gYzgGTkMicWTLPdAftJLfJFlLUAAKZGkStNU72sZjT66SnMDVOfOWY/YAoiD7Jxa9iHvngcag==
 
+psn-api@^2.8.3:
+  version "2.8.3"
+  resolved "https://registry.yarnpkg.com/psn-api/-/psn-api-2.8.3.tgz#86c2d5256d105ec59a64db7658523f9ad4c88502"
+  integrity sha512-LPffc9tPbQ7scsKRucijQPBX2oVMfc2aF39RhYg91Lli9K3JAaBk4hJHVUKxtB2vJFpKBCkELNvwfZd/TJEP0g==
+  dependencies:
+    isomorphic-unfetch "^3.1.0"
+
 punycode@^2.1.0, punycode@^2.1.1:
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/punycode/-/punycode-2.1.1.tgz#b58b010ac40c22c5657616c8d2c2c02c7bf479ec"

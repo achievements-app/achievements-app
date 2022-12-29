@@ -21,7 +21,8 @@ const newUsers: NewUser[] = [
       { accountUserName: "UsableDayv", gamingService: "XBOX" },
       { accountUserName: "WCopeland1", gamingService: "XBOX" },
       { accountUserName: "ViaFix", gamingService: "XBOX" },
-      { accountUserName: "HippopotamusRex", gamingService: "RA" }
+      { accountUserName: "HippopotamusRex", gamingService: "RA" },
+      { accountUserName: "NeutraLiTe", gamingService: "PSN" }
     ]
   },
   {
@@ -52,7 +53,10 @@ const newUsers: NewUser[] = [
   {
     userName: "xelnia",
     discordId: "280439586537340929",
-    trackedAccounts: [{ accountUserName: "xelnia", gamingService: "RA" }]
+    trackedAccounts: [
+      { accountUserName: "xelnia", gamingService: "RA" },
+      { accountUserName: "xelnia", gamingService: "PSN" }
+    ]
   },
   {
     userName: "markussd",

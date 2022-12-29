@@ -207,7 +207,7 @@ export class SyncProcessor {
   async processSyncXboxUserGames(job: Job<SyncUserGamesPayload>) {
     // Virtually all Xbox API calls require a XUID, not a gamertag.
     // We can exchange a gamertag for a XUID, so do that first.
-    const userXuid = await this.syncService.useTrackedAccountXuid(
+    const trackedAccount = await this.syncService.useTrackedAccountXuid(
       job.data.trackedAccount
     );
 
@@ -221,20 +221,20 @@ export class SyncProcessor {
       missingGameServiceTitleIds,
       staleGameServiceTitleIds
     } = await this.syncService.getMissingAndPresentUserXboxGames(
-      userXuid,
-      job.data.trackedAccount.accountUserName
+      trackedAccount.serviceAccountId,
+      trackedAccount.accountUserName
     );
 
     // Add all the missing games and their achievements to our DB.
     const newlyAddedGames = await this.syncService.addXboxTitlesToDb(
-      userXuid,
+      trackedAccount.serviceAccountId,
       missingGameServiceTitleIds,
       allUserGames
     );
 
     // Update all the stale games and their achievements in our DB.
     const updatedGames = await this.syncService.updateXboxTitlesInDb(
-      userXuid,
+      trackedAccount.serviceAccountId,
       staleGameServiceTitleIds,
       allUserGames
     );
@@ -249,7 +249,41 @@ export class SyncProcessor {
     await this.syncService.queueSyncUserProgressJobsForXboxGames(
       serviceTitleIdsToSyncUserProgress,
       allUserGames,
-      { ...job.data.trackedAccount, xboxXuid: userXuid }
+      trackedAccount
+    );
+  }
+
+  @Process({ name: syncJobNames.syncPsnUserGames })
+  async processSyncPsnUserGames(job: Job<SyncUserGamesPayload>) {
+    // Virtually all PSN API calls require an Account ID, not a username.
+    // We can find an Account ID from a given username, so do that first.
+    const trackedAccount = await this.syncService.useTrackedAccountPsnAccountId(
+      job.data.trackedAccount
+    );
+
+    // Get all the user games recorded on PSN, as well as what games we
+    // do or don't currently have stored in our database. Games that we
+    // don't have stored, we'll need to fetch and store before we can store
+    // the user's actual progress on the game.
+    const {
+      allUserGames,
+      existingGameServiceTitleIds,
+      missingGameServiceTitleIds
+    } = await this.syncService.getMissingAndPresentUserPsnGames(
+      trackedAccount.serviceAccountId,
+      job.data.trackedAccount.accountUserName
+    );
+
+    // PSN is unique in that complete game metadata cannot even be retrieved
+    // unless we also fetch and merge the user's progress on a game.
+    // Like other services, we'll start by doing work on the games that are
+    // missing from our DB. However, we must simultaneously also collect and
+    // store the UserGameProgress entities for them. After we have the missing
+    // stuff, we'll check if any work is needed on the existing games.
+    await this.syncService.addPsnTitlesAndProgressToDb(
+      trackedAccount,
+      missingGameServiceTitleIds,
+      allUserGames
     );
   }
 }

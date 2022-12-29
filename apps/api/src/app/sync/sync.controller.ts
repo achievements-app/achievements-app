@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { InjectQueue } from "@nestjs/bull";
 import {
   Controller,
@@ -11,6 +13,7 @@ import { Queue } from "bull";
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
+import { PsnDataService } from "../shared/integrations/psn/psn-data.service";
 import type { SyncQueuePayload, SyncUserGamesPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 
@@ -21,8 +24,18 @@ export class SyncController {
   constructor(
     @InjectQueue("sync")
     private readonly syncQueue: Queue<SyncQueuePayload>,
-    private readonly dbService: DbService
+    private readonly dbService: DbService,
+    private readonly psnDataService: PsnDataService
   ) {}
+
+  @Get("playground")
+  async playground() {
+    return await this.psnDataService.fetchTitleHistoryByAccountId(
+      "962157895908076652"
+    );
+
+    return await this.psnDataService.fetchAccountIdFromUserName("xelnia");
+  }
 
   @Get("full")
   async syncAll() {
@@ -145,6 +158,31 @@ export class SyncController {
     this.#logger.logQueueingJob(syncJobNames.syncXboxUserGames, payload);
     const newJob = await this.syncQueue.add(
       syncJobNames.syncXboxUserGames,
+      payload,
+      { attempts: 6, backoff: 60000 }
+    );
+    this.#logger.logQueuedJob(newJob.name, newJob.id);
+
+    return { status: "success" };
+  }
+
+  @Get("psn/:userName")
+  async syncPsnUserName(@Param("userName") userName: string) {
+    const foundTrackedAccount =
+      await this.dbService.findTrackedAccountByAccountUserName("PSN", userName);
+
+    if (!foundTrackedAccount) {
+      this.#logger.warn(`No tracked PSN account for ${userName}`);
+      throw new HttpException("No tracked account.", HttpStatus.NOT_FOUND);
+    }
+
+    const payload: SyncUserGamesPayload = {
+      trackedAccount: foundTrackedAccount
+    };
+
+    this.#logger.logQueueingJob(syncJobNames.syncPsnUserGames, payload);
+    const newJob = await this.syncQueue.add(
+      syncJobNames.syncPsnUserGames,
       payload,
       { attempts: 6, backoff: 60000 }
     );

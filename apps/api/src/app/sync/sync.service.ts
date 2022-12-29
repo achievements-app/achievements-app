@@ -10,6 +10,8 @@ import type {
 } from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
+import { PsnService } from "@/api/shared/integrations/psn/psn.service";
+import { PsnDataService } from "@/api/shared/integrations/psn/psn-data.service";
 import { RetroachievementsService } from "@/api/shared/integrations/retroachievements/retroachievements.service";
 import { XboxService } from "@/api/shared/integrations/xbox/xbox.service";
 import { XboxDataService } from "@/api/shared/integrations/xbox/xbox-data.service";
@@ -27,6 +29,8 @@ export class SyncService {
     private readonly retroachievementsService: RetroachievementsService,
     private readonly xboxDataService: XboxDataService,
     private readonly xboxService: XboxService,
+    private readonly psnDataService: PsnDataService,
+    private readonly psnService: PsnService,
     private readonly dbService: DbService
   ) {}
 
@@ -98,6 +102,55 @@ export class SyncService {
     }
 
     return addedGames;
+  }
+
+  async addPsnTitlesAndProgressToDb(
+    trackedAccount: TrackedAccount,
+    targetServiceTitleIds: string[],
+    allUserGames: MappedGame[]
+  ) {
+    const targetUserGames = allUserGames.filter((userGame) =>
+      targetServiceTitleIds.includes(userGame.serviceTitleId)
+    );
+    this.#logger.log(`Need to add ${targetUserGames.length} PSN titles`);
+
+    for (const targetUserGame of targetUserGames) {
+      try {
+        const completeUserGameMetadata =
+          await this.psnService.fetchCompleteUserGameMetadata(
+            trackedAccount.serviceAccountId,
+            targetUserGame
+          );
+
+        const addedGame = await this.dbService.addMappedCompleteGame(
+          completeUserGameMetadata
+        );
+
+        // Now handle the UserGameProgress entity.
+        this.#logger.log(
+          `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id}`
+        );
+
+        const earnedAchievements = completeUserGameMetadata.achievements.filter(
+          (achievement) => achievement.isEarned
+        );
+
+        const newUserGameProgress = await this.dbService.addNewUserGameProgress(
+          addedGame.id,
+          trackedAccount,
+          earnedAchievements
+        );
+
+        this.#logger.log(
+          `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id} as ${newUserGameProgress.id}`
+        );
+      } catch (error) {
+        this.#logger.error(
+          `Could not fetch PSN game ${targetUserGame.name}:${targetUserGame.serviceTitleId}`,
+          error
+        );
+      }
+    }
   }
 
   async updateRetroachievementsTitlesInDb(targetServiceTitleIds: string[]) {
@@ -209,15 +262,19 @@ export class SyncService {
     // they were unlocked.
     const serviceUserGameProgress =
       await this.xboxService.fetchCompleteGameMetadata(
-        trackedAccount.xboxXuid,
+        trackedAccount.serviceAccountId,
         storedGame.serviceTitleId,
         storedGame.xboxAchievementsSchemaKind as "legacy" | "modern"
       );
 
+    const earnedAchievements = serviceUserGameProgress.achievements.filter(
+      (achievement) => achievement.earnedOn
+    );
+
     const newUserGameProgress = await this.dbService.addNewUserGameProgress(
       storedGame.id,
       trackedAccount,
-      serviceUserGameProgress.achievements
+      earnedAchievements
     );
 
     this.#logger.log(
@@ -274,7 +331,7 @@ export class SyncService {
     // they were unlocked.
     const serviceUserGameProgress =
       await this.xboxService.fetchCompleteGameMetadata(
-        trackedAccount.xboxXuid,
+        trackedAccount.serviceAccountId,
         storedGame.serviceTitleId,
         storedGame.xboxAchievementsSchemaKind as "legacy" | "modern"
       );
@@ -387,14 +444,48 @@ export class SyncService {
     };
   }
 
+  async getMissingAndPresentUserPsnGames(
+    userAccountId: string,
+    userName: string
+  ) {
+    // First, fetch the list of all the user games. From this, we'll
+    // have all the title IDs so we can check our database for what
+    // games we have and what games we're missing.
+    const allUserGames = await this.psnService.fetchUserPlayedGames(
+      userAccountId
+    );
+
+    const allUserServiceTitleIds = allUserGames.map(
+      (userGame) => userGame.serviceTitleId
+    );
+
+    const { existingGameServiceTitleIds, missingGameServiceTitleIds } =
+      await this.dbService.getMultipleGamesExistenceStatus(
+        "PSN",
+        allUserServiceTitleIds
+      );
+
+    this.#logger.log(
+      `${userName}:${userAccountId} has ${allUserGames.length} games tracked on PSN. ${existingGameServiceTitleIds.length} of ${allUserGames.length} are stored in our DB.`
+    );
+
+    return {
+      existingGameServiceTitleIds,
+      missingGameServiceTitleIds,
+      allUserGames
+    };
+  }
+
   /**
    * Nearly every Xbox API call requires an XUID. We'll have this value
    * stored every time except the first sync. If we're running the first
    * sync for the account, we'll need to make a call to fetch the XUID.
    */
-  async useTrackedAccountXuid(trackedAccount: TrackedAccount): Promise<string> {
-    if (trackedAccount.xboxXuid) {
-      return trackedAccount.xboxXuid;
+  async useTrackedAccountXuid(
+    trackedAccount: TrackedAccount
+  ): Promise<TrackedAccount> {
+    if (trackedAccount.serviceAccountId) {
+      return trackedAccount;
     }
 
     // If we don't already have the account's XUID, retrieve it
@@ -403,9 +494,28 @@ export class SyncService {
     const xuid = await this.xboxDataService.fetchXuidFromGamertag(
       trackedAccount.accountUserName
     );
-    await this.dbService.storeTrackedAccountXuid(trackedAccount, xuid);
+    return await this.dbService.storeTrackedAccountUniqueAccountId(
+      trackedAccount,
+      xuid
+    );
+  }
 
-    return xuid;
+  async useTrackedAccountPsnAccountId(
+    trackedAccount: TrackedAccount
+  ): Promise<TrackedAccount> {
+    if (trackedAccount.serviceAccountId) {
+      return trackedAccount;
+    }
+
+    // If we don't already have the account's Account ID, retrieve it
+    // from PSN and store it in the database.
+    const accountId = await this.psnDataService.fetchAccountIdFromUserName(
+      trackedAccount.accountUserName
+    );
+    return await this.dbService.storeTrackedAccountUniqueAccountId(
+      trackedAccount,
+      accountId
+    );
   }
 
   async queueSyncUserProgressJobsForRetroachievementsGames(

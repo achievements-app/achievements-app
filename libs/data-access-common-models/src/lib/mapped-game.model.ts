@@ -8,7 +8,10 @@ type MappedGameRequiredProps = Pick<
 type MappedGameOptionalProps = Partial<
   Pick<
     Game,
-    "gamePlatforms" | "knownPlayerCount" | "xboxAchievementsSchemaKind"
+    | "gamePlatforms"
+    | "knownPlayerCount"
+    | "xboxAchievementsSchemaKind"
+    | "psnServiceName"
   > & {
     knownUserEarnedAchievementCount: number;
     knownUserEarnedPointsCount: number;

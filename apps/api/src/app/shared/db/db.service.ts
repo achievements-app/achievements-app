@@ -52,7 +52,8 @@ export class DbService implements OnModuleInit {
           createMany: {
             data: mappedCompleteGame.achievements.map((achievement) => ({
               ...achievement,
-              earnedOn: undefined
+              earnedOn: undefined,
+              isEarned: undefined
             })),
             skipDuplicates: true
           }
@@ -208,15 +209,18 @@ export class DbService implements OnModuleInit {
   }
 
   /**
-   * Nearly all Xbox API calls require a XUID as the input,
-   * not a username or gamertag. We only want to fetch a gamertag's
-   * XUID once, and after we have it we want to persist it to
-   * the TrackedAccount entity.
+   * Some gaming services, notably Xbox and PSN, require a unique
+   * account ID as the user input rather than a username or gamertag.
+   * We only want to fetch an account's unique ID once, and after we
+   * have it we want to persist it to the TrackedAccount entity.
    */
-  async storeTrackedAccountXuid(trackedAccount: TrackedAccount, xuid: string) {
+  async storeTrackedAccountUniqueAccountId(
+    trackedAccount: TrackedAccount,
+    uniqueAccountId: string
+  ) {
     return await this.db.trackedAccount.update({
       where: { id: trackedAccount.id },
-      data: { xboxXuid: xuid }
+      data: { serviceAccountId: uniqueAccountId }
     });
   }
 
@@ -312,6 +316,7 @@ export class DbService implements OnModuleInit {
       data: mappedCompleteGame.achievements.map((achievement) => ({
         ...achievement,
         earnedOn: undefined,
+        isEarned: undefined,
         gameId: updatedGame.id
       }))
     });

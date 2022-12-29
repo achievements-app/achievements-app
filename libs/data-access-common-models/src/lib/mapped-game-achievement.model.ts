@@ -10,10 +10,11 @@ type MappedGameAchievementOptionalProps = Partial<
     GameAchievement,
     | "vanillaPoints"
     | "ratioPoints"
+    | "psnTrophyKind"
     | "sourceImageUrl"
     | "knownEarnerCount"
     | "knownEarnerPercentage"
-  > & { earnedOn: string }
+  > & { earnedOn: string; isEarned: boolean }
 >;
 
 export type MappedGameAchievement = MappedGameAchievementRequiredProps &

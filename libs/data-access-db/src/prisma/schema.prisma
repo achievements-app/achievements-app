@@ -17,6 +17,7 @@ model Game {
   gamePlatforms              String[]
   knownPlayerCount           Int?
   xboxAchievementsSchemaKind String?
+  psnServiceName             String?
   isStale                    Boolean?
 
   achievements         GameAchievement[]
@@ -26,14 +27,15 @@ model Game {
 }
 
 model GameAchievement {
-  id                    String   @id @default(uuid())
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                    String         @id @default(uuid())
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
   serviceAchievementId  String
   name                  String
   description           String?
   vanillaPoints         Int?
   ratioPoints           Int?
+  psnTrophyKind         PsnTrophyKind?
   sourceImageUrl        String?
   knownEarnerCount      Int?
   knownEarnerPercentage Float?
@@ -83,12 +85,12 @@ model UserEarnedAchievement {
 }
 
 model TrackedAccount {
-  id              String        @id @default(uuid())
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  gamingService   GamingService
-  accountUserName String
-  xboxXuid        String?
+  id               String        @id @default(uuid())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  gamingService    GamingService
+  accountUserName  String
+  serviceAccountId String?
 
   gameProgressEntities UserGameProgress[]
 
@@ -102,4 +104,11 @@ enum GamingService {
   RA
   XBOX
   PSN
+}
+
+enum PsnTrophyKind {
+  Bronze
+  Silver
+  Gold
+  Platinum
 }
