@@ -75,6 +75,10 @@ export class PsnDataService {
         this.#logger.log(
           `Found Account ID ${foundAccountId} for PSN user ${userName}`
         );
+      } else {
+        this.#logger.warn(
+          `Unable to find Account ID for PSN user ${userName}, ${allResults}`
+        );
       }
     } catch (error) {
       this.#logger.warn(`Unable to find Account ID for PSN user ${userName}`);

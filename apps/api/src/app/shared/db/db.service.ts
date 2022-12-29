@@ -33,6 +33,47 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  async addMultipleMappedCompleteGames(
+    mappedCompleteGames: MappedCompleteGame[]
+  ) {
+    this.#logger.log(
+      `Adding ${mappedCompleteGames.length} titles: ${mappedCompleteGames.map(
+        (game) => game.name
+      )}`
+    );
+
+    const addedGames = await this.db.$transaction(
+      mappedCompleteGames.map((mappedCompleteGame) =>
+        this.db.game.create({
+          data: {
+            gamingService: mappedCompleteGame.gamingService,
+            name: mappedCompleteGame.name,
+            serviceTitleId: mappedCompleteGame.serviceTitleId,
+            knownPlayerCount: mappedCompleteGame.knownPlayerCount,
+            gamePlatforms: mappedCompleteGame.gamePlatforms,
+            xboxAchievementsSchemaKind:
+              mappedCompleteGame.xboxAchievementsSchemaKind,
+            isStale: false,
+            achievements: {
+              createMany: {
+                data: mappedCompleteGame.achievements.map((achievement) => ({
+                  ...achievement,
+                  earnedOn: undefined,
+                  isEarned: undefined
+                })),
+                skipDuplicates: true
+              }
+            }
+          }
+        })
+      )
+    );
+
+    this.#logger.log(`Added ${mappedCompleteGames.length}`);
+
+    return addedGames;
+  }
+
   async addMappedCompleteGame(mappedCompleteGame: MappedCompleteGame) {
     this.#logger.log(
       `Adding ${mappedCompleteGame.gamingService} title ${mappedCompleteGame.name}:${mappedCompleteGame.serviceTitleId} with ${mappedCompleteGame.achievements.length} achievements`

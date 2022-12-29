@@ -114,42 +114,45 @@ export class SyncService {
     );
     this.#logger.log(`Need to add ${targetUserGames.length} PSN titles`);
 
-    for (const targetUserGame of targetUserGames) {
-      try {
-        const completeUserGameMetadata =
-          await this.psnService.fetchCompleteUserGameMetadata(
-            trackedAccount.serviceAccountId,
-            targetUserGame
-          );
+    const allCompleteUserGameMetadatas = await Promise.all(
+      targetUserGames.map((targetUserGame) =>
+        this.psnService.fetchCompleteUserGameMetadata(
+          trackedAccount.serviceAccountId,
+          targetUserGame
+        )
+      )
+    );
 
-        const addedGame = await this.dbService.addMappedCompleteGame(
-          completeUserGameMetadata
-        );
+    this.#logger.log(
+      `Fetched complete metadata for ${allCompleteUserGameMetadatas.length} PSN titles for ${trackedAccount.accountUserName}`
+    );
 
-        // Now handle the UserGameProgress entity.
-        this.#logger.log(
-          `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id}`
-        );
+    const allAddedGames = await this.dbService.addMultipleMappedCompleteGames(
+      allCompleteUserGameMetadatas
+    );
 
-        const earnedAchievements = completeUserGameMetadata.achievements.filter(
-          (achievement) => achievement.isEarned
-        );
+    this.#logger.log(`Added ${allAddedGames.length} PSN titles to DB`);
 
-        const newUserGameProgress = await this.dbService.addNewUserGameProgress(
-          addedGame.id,
-          trackedAccount,
-          earnedAchievements
-        );
+    for (const addedGame of allAddedGames) {
+      this.#logger.log(
+        `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id}`
+      );
 
-        this.#logger.log(
-          `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id} as ${newUserGameProgress.id}`
-        );
-      } catch (error) {
-        this.#logger.error(
-          `Could not fetch PSN game ${targetUserGame.name}:${targetUserGame.serviceTitleId}`,
-          error
-        );
-      }
+      const earnedAchievements = allCompleteUserGameMetadatas
+        .find(
+          (metadata) => metadata.serviceTitleId === addedGame.serviceTitleId
+        )
+        .achievements.filter((achievement) => achievement.isEarned);
+
+      const newUserGameProgress = await this.dbService.addNewUserGameProgress(
+        addedGame.id,
+        trackedAccount,
+        earnedAchievements
+      );
+
+      this.#logger.log(
+        `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id} as ${newUserGameProgress.id}`
+      );
     }
   }
 

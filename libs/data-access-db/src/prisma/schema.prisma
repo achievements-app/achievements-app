@@ -73,10 +73,10 @@ model UserGameProgress {
 }
 
 model UserEarnedAchievement {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  earnedOn  DateTime
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  earnedOn  DateTime?
 
   achievement          GameAchievement  @relation(fields: [gameAchievementId], references: [id])
   gameAchievementId    String
