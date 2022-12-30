@@ -10,6 +10,7 @@ import type {
   MappedGameAchievement
 } from "@achievements-app/data-access-common-models";
 import type {
+  Game,
   GameAchievement,
   GamingService,
   PrismaPromise,
@@ -54,6 +55,7 @@ export class DbService implements OnModuleInit {
             xboxAchievementsSchemaKind:
               mappedCompleteGame.xboxAchievementsSchemaKind,
             isStale: false,
+            psnServiceName: mappedCompleteGame.psnServiceName,
             achievements: {
               createMany: {
                 data: mappedCompleteGame.achievements.map((achievement) => ({
@@ -222,9 +224,11 @@ export class DbService implements OnModuleInit {
       }
     });
 
-    const existingGameServiceTitleIds = foundGames
-      .filter((foundGame) => !foundGame.isStale)
-      .map((foundGame) => foundGame.serviceTitleId);
+    const existingGames = foundGames.filter((foundGame) => !foundGame.isStale);
+
+    const existingGameServiceTitleIds = existingGames.map(
+      (foundGame) => foundGame.serviceTitleId
+    );
     const missingGameServiceTitleIds = serviceTitleIds.filter(
       (id) => !existingGameServiceTitleIds.includes(id)
     );
@@ -233,6 +237,7 @@ export class DbService implements OnModuleInit {
       .map((foundStaleGame) => foundStaleGame.serviceTitleId);
 
     return {
+      existingGames,
       existingGameServiceTitleIds,
       missingGameServiceTitleIds,
       staleGameServiceTitleIds
@@ -290,7 +295,7 @@ export class DbService implements OnModuleInit {
 
     if (isMissingAnyStoredAchievements) {
       this.#logger.warn(
-        `Missing achievement(s) for UserGameProgress on game XBOX:${existingUserGameProgress.gameId}`
+        `Missing achievement(s) for UserGameProgress on game ${existingUserGameProgress.gameId}`
       );
 
       throw new Error("Missing achievement");
@@ -347,7 +352,8 @@ export class DbService implements OnModuleInit {
         gamePlatforms: mappedCompleteGame.gamePlatforms,
         isStale: false,
         xboxAchievementsSchemaKind:
-          mappedCompleteGame.xboxAchievementsSchemaKind
+          mappedCompleteGame.xboxAchievementsSchemaKind,
+        psnServiceName: mappedCompleteGame.psnServiceName
       }
     });
 

@@ -39,11 +39,11 @@ export class PsnAuthService implements OnModuleInit {
 
     const mustReauthorizeWithPsn =
       !activeAuthorization ||
-      this.#getIsExpired(activeAuthorization.refreshToken);
+      this.#getIsExpired(activeAuthorization.refreshTokenExpiresOn);
 
     if (mustReauthorizeWithPsn) {
       activeAuthorization = await this.#getNewPsnAuthorization();
-    } else if (this.#getIsExpired(activeAuthorization.accessToken)) {
+    } else if (this.#getIsExpired(activeAuthorization.accessTokenExpiresOn)) {
       this.#logger.log("Current PSN access token is expired.");
 
       activeAuthorization = await this.#refreshExistingPsnAuthorization(
@@ -62,13 +62,12 @@ export class PsnAuthService implements OnModuleInit {
       return null;
     }
 
-    this.#logger.verbose("PSN auth cache hit");
     return JSON.parse(response) as PsnAuthorization;
   }
 
   #getIsExpired(tokenExpiresOn: string) {
     const now = dayjs().utc();
-    return now.isAfter(tokenExpiresOn);
+    return now.isAfter(dayjs(tokenExpiresOn));
   }
 
   /**

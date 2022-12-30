@@ -16,7 +16,10 @@ export const mapTrophyTitleToStoredGame = (
     knownUserEarnedAchievementCount,
     name: trophyTitle.trophyTitleName,
     gamingService: "PSN",
-    psnServiceName: trophyTitle.npServiceName,
-    serviceTitleId: trophyTitle.npCommunicationId
+    psnServiceName: trophyTitle.trophyTitlePlatform.includes("PS5")
+      ? "trophy2"
+      : "trophy",
+    serviceTitleId: trophyTitle.npCommunicationId,
+    gamePlatforms: trophyTitle.trophyTitlePlatform.split(",")
   };
 };

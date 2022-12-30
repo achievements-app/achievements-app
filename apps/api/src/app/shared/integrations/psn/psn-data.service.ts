@@ -55,33 +55,43 @@ export class PsnDataService {
 
     const authorization = await this.authService.usePsnAuthorization();
 
-    const allAccountsSearchResults = await psn.makeUniversalSearch(
-      authorization,
-      userName,
-      "SocialAllAccounts"
-    );
-
+    let attemptsRemaining = 3;
     let foundAccountId: string | null = null;
-    try {
-      const allResults = allAccountsSearchResults.domainResponses[0].results;
 
-      const foundCorrectResult = allResults.find(
-        (result) => result.socialMetadata.onlineId === userName
+    while (!foundAccountId && attemptsRemaining > 0) {
+      this.#logger.log(
+        `Trying to fetch account ID for ${userName}, attempts remaining: ${attemptsRemaining}`
       );
 
-      if (foundCorrectResult) {
-        foundAccountId = foundCorrectResult.socialMetadata.accountId;
+      const allAccountsSearchResults = await psn.makeUniversalSearch(
+        authorization,
+        userName,
+        "SocialAllAccounts"
+      );
 
-        this.#logger.log(
-          `Found Account ID ${foundAccountId} for PSN user ${userName}`
+      try {
+        const allResults = allAccountsSearchResults.domainResponses[0].results;
+
+        const foundCorrectResult = allResults.find(
+          (result) => result.socialMetadata.onlineId === userName
         );
-      } else {
-        this.#logger.warn(
-          `Unable to find Account ID for PSN user ${userName}, ${allResults}`
-        );
+
+        if (foundCorrectResult) {
+          foundAccountId = foundCorrectResult.socialMetadata.accountId;
+
+          this.#logger.log(
+            `Found Account ID ${foundAccountId} for PSN user ${userName}`
+          );
+        } else {
+          this.#logger.warn(
+            `Unable to find Account ID for PSN user ${userName}, ${allResults}`
+          );
+          attemptsRemaining -= 1;
+        }
+      } catch (error) {
+        this.#logger.warn(`Unable to find Account ID for PSN user ${userName}`);
+        attemptsRemaining -= 1;
       }
-    } catch (error) {
-      this.#logger.warn(`Unable to find Account ID for PSN user ${userName}`);
     }
 
     return foundAccountId;

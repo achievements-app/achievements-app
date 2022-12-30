@@ -258,6 +258,8 @@ export class SyncProcessor {
     // Virtually all PSN API calls require an Account ID, not a username.
     // We can find an Account ID from a given username, so do that first.
     const trackedAccount = await this.syncService.useTrackedAccountPsnAccountId(
+      // DANGER: ONLY USE `job.data.trackedAccount` HERE.
+      // EVERYWHERE ELSE, USE `trackedAccount`.
       job.data.trackedAccount
     );
 
@@ -265,14 +267,11 @@ export class SyncProcessor {
     // do or don't currently have stored in our database. Games that we
     // don't have stored, we'll need to fetch and store before we can store
     // the user's actual progress on the game.
-    const {
-      allUserGames,
-      existingGameServiceTitleIds,
-      missingGameServiceTitleIds
-    } = await this.syncService.getMissingAndPresentUserPsnGames(
-      trackedAccount.serviceAccountId,
-      job.data.trackedAccount.accountUserName
-    );
+    const { allUserGames, missingGameServiceTitleIds } =
+      await this.syncService.getMissingAndPresentUserPsnGames(
+        trackedAccount.serviceAccountId,
+        job.data.trackedAccount.accountUserName
+      );
 
     // PSN is unique in that complete game metadata cannot even be retrieved
     // unless we also fetch and merge the user's progress on a game.
@@ -285,5 +284,29 @@ export class SyncProcessor {
       missingGameServiceTitleIds,
       allUserGames
     );
+
+    // Now tackle the existing games. We need to do work on any games that
+    // already exist in our DB that have no UserGameProgress and we know the
+    // user has progressed on, or games where we're missing reported progress.
+    // We know we're missing reported progress because the `knownUserEarnedAchievementCount`
+    // value is greater than what we have stored for the game in our DB for the
+    // associated user's UserGameProgress.
+    const titleIdsNeedingUpdate =
+      await this.syncService.getPsnTitleIdsNeedingUserProgressUpdate(
+        trackedAccount,
+        allUserGames
+      );
+
+    this.#logger.log(
+      `PSN account ${trackedAccount.accountUserName} has ${titleIdsNeedingUpdate.length} titles needing a UserGameProgress update.`
+    );
+
+    if (titleIdsNeedingUpdate.length > 0) {
+      await this.syncService.updatePsnTitlesAndProgressInDb(
+        trackedAccount,
+        titleIdsNeedingUpdate,
+        allUserGames
+      );
+    }
   }
 }
