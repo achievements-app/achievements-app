@@ -10,7 +10,6 @@ import type {
   MappedGameAchievement
 } from "@achievements-app/data-access-common-models";
 import type {
-  Game,
   GameAchievement,
   GamingService,
   PrismaPromise,
@@ -71,7 +70,9 @@ export class DbService implements OnModuleInit {
       )
     );
 
-    this.#logger.log(`Added ${mappedCompleteGames.length}`);
+    this.#logger.log(
+      `Added ${mappedCompleteGames.length} MappedCompleteGame entities to the DB`
+    );
 
     return addedGames;
   }
@@ -91,6 +92,7 @@ export class DbService implements OnModuleInit {
         xboxAchievementsSchemaKind:
           mappedCompleteGame.xboxAchievementsSchemaKind,
         isStale: false,
+        psnServiceName: mappedCompleteGame.psnServiceName,
         achievements: {
           createMany: {
             data: mappedCompleteGame.achievements.map((achievement) => ({

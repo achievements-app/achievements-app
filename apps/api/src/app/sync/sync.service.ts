@@ -125,6 +125,10 @@ export class SyncService {
       });
 
     for (const userReportedGame of userReportedGames) {
+      const doesGameExist = await this.dbService.db.game.findFirst({
+        where: { serviceTitleId: userReportedGame.serviceTitleId }
+      });
+
       const foundUserGameProgress = allPsnUserGameProgress.find(
         (userGameProgress) =>
           userGameProgress.game.serviceTitleId ===
@@ -139,7 +143,10 @@ export class SyncService {
         foundUserGameProgress?.earnedAchievements?.length !==
         userReportedGame?.knownUserEarnedAchievementCount;
 
-      if (isMissingUserGameProgress || isAchievementCountMismatched) {
+      if (
+        doesGameExist &&
+        (isMissingUserGameProgress || isAchievementCountMismatched)
+      ) {
         const storedEarnedAchievementCount =
           foundUserGameProgress?.earnedAchievements?.length ?? 0;
         const reportedEarnedAchievementCount =
@@ -208,87 +215,107 @@ export class SyncService {
     }
   }
 
-  async updatePsnTitlesAndProgressInDb(
+  async addPsnTitleAndProgressToDb(
     trackedAccount: TrackedAccount,
-    targetServiceTitleIds: string[],
-    allUserGames: MappedGame[]
+    targetUserGame: MappedGame
   ) {
-    const allUpdatedGames: Game[] = [];
-
-    const targetUserGames = allUserGames.filter((userGame) =>
-      targetServiceTitleIds.includes(userGame.serviceTitleId)
-    );
-    this.#logger.log(
-      `Need to update ${targetUserGames.length} PSN titles for ${trackedAccount.accountUserName}`
-    );
-
-    const allCompleteUserGameMetadatas = await Promise.all(
-      targetUserGames.map((targetUserGame) =>
-        this.psnService.fetchCompleteUserGameMetadata(
-          trackedAccount.serviceAccountId,
-          targetUserGame
-        )
-      )
-    );
-
-    this.#logger.log(
-      `Fetched complete metadata for ${allCompleteUserGameMetadatas.length} PSN titles for ${trackedAccount.accountUserName}`
-    );
-
-    for (const completeUserGameMetadata of allCompleteUserGameMetadatas) {
-      const updatedGame = await this.dbService.updateMappedCompleteGame(
-        completeUserGameMetadata
+    const completeUserGameMetadata =
+      await this.psnService.fetchCompleteUserGameMetadata(
+        trackedAccount.serviceAccountId,
+        targetUserGame
       );
 
-      allUpdatedGames.push(updatedGame);
-    }
-
     this.#logger.log(
-      `Updated ${allUpdatedGames.length} PSN titles in DB belonging to account ${trackedAccount.accountUserName}`
+      `Fetched complete metadata for PSN game ${targetUserGame.name} for user ${trackedAccount.accountUserName}`
     );
 
-    for (const updatedGame of allUpdatedGames) {
-      const existingUserGameProgress =
-        await this.dbService.findCompleteUserGameProgress(
-          trackedAccount.id,
-          updatedGame.id
-        );
+    const addedGame = await this.dbService.addMappedCompleteGame(
+      completeUserGameMetadata
+    );
 
-      const earnedAchievements = allCompleteUserGameMetadatas
-        .find(
-          (metadata) => metadata.serviceTitleId === updatedGame.serviceTitleId
-        )
-        .achievements.filter((achievement) => achievement.isEarned);
+    this.#logger.log(`Added PSN title ${addedGame.name} to DB`);
 
-      if (!existingUserGameProgress) {
-        this.#logger.log(
-          `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${updatedGame.id}:${updatedGame.name}`
-        );
+    this.#logger.log(
+      `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id}:${addedGame.name}`
+    );
 
-        const newUserGameProgress = await this.dbService.addNewUserGameProgress(
-          updatedGame.id,
-          trackedAccount,
-          earnedAchievements
-        );
+    const earnedAchievements = completeUserGameMetadata.achievements.filter(
+      (achievement) => achievement.isEarned
+    );
 
-        this.#logger.log(
-          `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${updatedGame.id}:${updatedGame.name} as ${newUserGameProgress.id}`
-        );
-      } else {
-        this.#logger.log(
-          `Updating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${updatedGame.id}:${updatedGame.name}`
-        );
+    const newUserGameProgress = await this.dbService.addNewUserGameProgress(
+      addedGame.id,
+      trackedAccount,
+      earnedAchievements
+    );
 
-        this.#logger.log(
-          `${trackedAccount.gamingService}:${
-            trackedAccount.accountUserName
-          } has earned ${earnedAchievements.length} achievements for ${
-            updatedGame.name
-          }. We are currently storing ${
-            existingUserGameProgress?.earnedAchievements?.length ?? 0
-          }`
-        );
+    this.#logger.log(
+      `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${addedGame.id}:${addedGame.name} as ${newUserGameProgress.id}`
+    );
+  }
 
+  async updatePsnTitleAndProgressInDb(
+    trackedAccount: TrackedAccount,
+    targetUserGame: MappedGame
+  ) {
+    this.#logger.log(
+      `Need to update PSN title ${targetUserGame.name} for ${trackedAccount.accountUserName}`
+    );
+
+    const completeUserGameMetadata =
+      await this.psnService.fetchCompleteUserGameMetadata(
+        trackedAccount.serviceAccountId,
+        targetUserGame
+      );
+
+    this.#logger.log(
+      `Fetched complete metadata for PSN title ${targetUserGame.name} for ${trackedAccount.accountUserName}`
+    );
+
+    const updatedGame = await this.dbService.updateMappedCompleteGame(
+      completeUserGameMetadata
+    );
+
+    this.#logger.log(`Updated metadata for PSN title ${targetUserGame.name}`);
+
+    const existingUserGameProgress =
+      await this.dbService.findCompleteUserGameProgress(
+        trackedAccount.id,
+        updatedGame.id
+      );
+
+    const earnedAchievements = completeUserGameMetadata.achievements.filter(
+      (achievement) => achievement.isEarned
+    );
+
+    if (!existingUserGameProgress) {
+      this.#logger.log(
+        `Creating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${updatedGame.id}:${updatedGame.name}`
+      );
+
+      const newUserGameProgress = await this.dbService.addNewUserGameProgress(
+        updatedGame.id,
+        trackedAccount,
+        earnedAchievements
+      );
+
+      this.#logger.log(
+        `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${updatedGame.id}:${updatedGame.name} as ${newUserGameProgress.id}`
+      );
+    } else {
+      this.#logger.log(
+        `Updating UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${updatedGame.id}:${updatedGame.name}`
+      );
+
+      const reportedEarnedAchievementsCount = earnedAchievements.length;
+      const storedEarnedAchievementsCount =
+        existingUserGameProgress?.earnedAchievements?.length ?? 0;
+
+      this.#logger.log(
+        `${trackedAccount.gamingService}:${trackedAccount.accountUserName} has earned ${reportedEarnedAchievementsCount} achievements for ${updatedGame.name}. We are currently storing ${storedEarnedAchievementsCount}`
+      );
+
+      if (reportedEarnedAchievementsCount !== storedEarnedAchievementsCount) {
         const updatedUserGameProgress =
           await this.dbService.updateExistingUserGameProgress(
             existingUserGameProgress,
@@ -300,10 +327,6 @@ export class SyncService {
         );
       }
     }
-
-    this.#logger.log(
-      `Finished updating UserGameProgress for PSN account ${trackedAccount.accountUserName}`
-    );
   }
 
   async updateRetroachievementsTitlesInDb(targetServiceTitleIds: string[]) {
@@ -714,6 +737,48 @@ export class SyncService {
         syncJobNames.syncRetroachievementsUserGameProgress,
         payload,
         { attempts: 5, backoff: 60000 }
+      );
+    }
+  }
+
+  async queueSyncJobsForUserMissingPsnGames(
+    missingGameServiceTitleIds: string[],
+    allUserGames: MappedGame[],
+    trackedAccount: TrackedAccount
+  ) {
+    for (const missingGameServiceTitleId of missingGameServiceTitleIds) {
+      const targetUserGame = allUserGames.find(
+        (userGame) => userGame.serviceTitleId === missingGameServiceTitleId
+      );
+
+      await this.syncQueue.add(
+        syncJobNames.syncPsnUserMissingGame,
+        {
+          trackedAccount,
+          targetUserGame
+        },
+        { attempts: 3, backoff: 15000 }
+      );
+    }
+  }
+
+  async queueSyncUserProgressJobsForPsnGames(
+    allServiceTitleIdsNeedingSync: string[],
+    allUserGames: MappedGame[],
+    trackedAccount: TrackedAccount
+  ) {
+    for (const serviceTitleIdNeedingSync of allServiceTitleIdsNeedingSync) {
+      const targetUserGame = allUserGames.find(
+        (userGame) => userGame.serviceTitleId === serviceTitleIdNeedingSync
+      );
+
+      await this.syncQueue.add(
+        syncJobNames.syncPsnUserGameProgress,
+        {
+          trackedAccount,
+          targetUserGame
+        },
+        { attempts: 3, backoff: 15000 }
       );
     }
   }

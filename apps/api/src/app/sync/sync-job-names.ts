@@ -7,5 +7,6 @@ export const syncJobNames = {
   syncXboxUserGameProgress: "syncXboxUserGameProgress",
 
   syncPsnUserGames: "syncPsnUserGames",
+  syncPsnUserMissingGame: "syncPsnUserMissingGame",
   syncPsnUserGameProgress: "syncPsnUserGameProgress"
 };

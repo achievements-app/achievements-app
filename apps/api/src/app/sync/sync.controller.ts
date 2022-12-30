@@ -184,7 +184,7 @@ export class SyncController {
     const newJob = await this.syncQueue.add(
       syncJobNames.syncPsnUserGames,
       payload,
-      { attempts: 1, backoff: 60000 }
+      { attempts: 5, backoff: 60000 }
     );
     this.#logger.logQueuedJob(newJob.name, newJob.id);
 
