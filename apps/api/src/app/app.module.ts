@@ -1,5 +1,6 @@
 import { BullModule } from "@nestjs/bull";
 import { Module } from "@nestjs/common";
+import { SentryModule } from "@ntegral/nestjs-sentry";
 
 import { AppController } from "./app.controller";
 import { SyncModule } from "./sync/sync.module";
@@ -13,6 +14,10 @@ import { SyncModule } from "./sync/sync.module";
         username: process.env["REDISUSER"],
         password: process.env["REDISPASSWORD"]
       }
+    }),
+    SentryModule.forRoot({
+      dsn: process.env["SENTRY_DSN"] ?? "sentry_io_dsn",
+      environment: process.env.NODE_ENV
     }),
 
     SyncModule

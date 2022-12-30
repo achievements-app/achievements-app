@@ -13,7 +13,6 @@ import { Queue } from "bull";
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import { PsnDataService } from "../shared/integrations/psn/psn-data.service";
 import type { SyncQueuePayload, SyncUserGamesPayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
 
@@ -24,17 +23,12 @@ export class SyncController {
   constructor(
     @InjectQueue("sync")
     private readonly syncQueue: Queue<SyncQueuePayload>,
-    private readonly dbService: DbService,
-    private readonly psnDataService: PsnDataService
+    private readonly dbService: DbService
   ) {}
 
   @Get("playground")
   async playground() {
-    return await this.psnDataService.fetchTitleHistoryByAccountId(
-      "962157895908076652"
-    );
-
-    return await this.psnDataService.fetchAccountIdFromUserName("xelnia");
+    return { foo: "bar" };
   }
 
   @Get("full")

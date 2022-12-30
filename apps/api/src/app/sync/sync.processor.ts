@@ -1,57 +1,25 @@
-import {
-  OnQueueActive,
-  OnQueueCompleted,
-  OnQueueError,
-  OnQueueFailed,
-  OnQueueStalled,
-  Process,
-  Processor
-} from "@nestjs/bull";
+import { Process, Processor } from "@nestjs/bull";
+import { InjectSentry, SentryService } from "@ntegral/nestjs-sentry";
 import { type Job } from "bull";
 
+import { BaseProcessor } from "@/api/common/base.processor";
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import {
-  SyncUserGameProgressPayload,
-  SyncUserGamesPayload,
-  SyncUserMissingGamePayload
-} from "./models";
+import { SyncUserGameProgressPayload, SyncUserGamesPayload } from "./models";
 import { SyncService } from "./sync.service";
 import { syncJobNames } from "./sync-job-names";
 
 @Processor("sync")
-export class SyncProcessor {
-  #logger = new Logger(SyncProcessor.name);
+export class SyncProcessor extends BaseProcessor {
+  protected readonly logger = new Logger(SyncProcessor.name);
 
   constructor(
+    @InjectSentry() protected sentryClient: SentryService,
     private readonly syncService: SyncService,
     private readonly dbService: DbService
-  ) {}
-
-  @OnQueueStalled()
-  onStalled(job: Job) {
-    this.#logger.warn(`JOB STALLED ${job.id}`);
-  }
-
-  @OnQueueActive()
-  onActive(job: Job) {
-    this.#logger.logActiveJob(job.name, job.id, job.data);
-  }
-
-  @OnQueueCompleted()
-  onCompleted(job: Job) {
-    this.#logger.logCompletedJob(job.name, job.id, job.data);
-  }
-
-  @OnQueueError()
-  onError(error: Error) {
-    this.#logger.logErrorJob(error);
-  }
-
-  @OnQueueFailed()
-  onFailed(job: Job, error: Error) {
-    this.#logger.logFailedJob(job.name, job.id, job.data, error);
+  ) {
+    super(sentryClient);
   }
 
   @Process({
@@ -116,7 +84,7 @@ export class SyncProcessor {
     // If a UserGameProgress entity doesn't exist, we have to
     // create a new one before doing anything else.
     if (!foundUserGameProgress) {
-      this.#logger.log(
+      this.logger.log(
         `Missing UserGameProgress for RA:${job.data.trackedAccount.id}:${job.data.storedGameId}`
       );
 
@@ -129,7 +97,7 @@ export class SyncProcessor {
       foundUserGameProgress.earnedAchievements.length !==
       job.data.serviceReportedEarnedAchievementCount
     ) {
-      this.#logger.log(
+      this.logger.log(
         `Found UserGameProgress for RA:${job.data.trackedAccount.id}:${
           job.data.storedGameId
         }. Missing ${
@@ -169,7 +137,7 @@ export class SyncProcessor {
     // If a UserGameProgress entity doesn't exist, we have to
     // create a new one before doing anything else.
     if (!foundUserGameProgress) {
-      this.#logger.log(
+      this.logger.log(
         `Missing UserGameProgress for XBOX:${job.data.trackedAccount.id}:${job.data.storedGameId}`
       );
 
@@ -187,7 +155,7 @@ export class SyncProcessor {
       if (
         trackedUnlockedGamerscore !== job.data.serviceReportedEarnedGamerscore
       ) {
-        this.#logger.log(
+        this.logger.log(
           `Found UserGameProgress for XBOX:${job.data.trackedAccount.id}:${
             job.data.storedGameId
           }. Missing ${
@@ -311,7 +279,7 @@ export class SyncProcessor {
     // We know we're missing reported progress because the `knownUserEarnedAchievementCount`
     // value is greater than what we have stored for the game in our DB for the
     // associated user's UserGameProgress.
-    this.#logger.log(
+    this.logger.log(
       `Determining UserGameProgress updates required for PSN account ${trackedAccount.accountUserName}`
     );
 
@@ -325,7 +293,7 @@ export class SyncProcessor {
         )
       );
 
-    this.#logger.log(
+    this.logger.log(
       `PSN account ${trackedAccount.accountUserName} has ${titleIdsNeedingUpdate.length} titles needing a UserGameProgress update.`
     );
 
