@@ -117,13 +117,20 @@ export class DbService implements OnModuleInit {
   async addNewUserGameProgress(
     storedGameId: string,
     trackedAccount: TrackedAccount,
-    serviceEarnedAchievements: MappedGameAchievement[]
+    serviceEarnedAchievements: MappedGameAchievement[],
+    gameName?: string
   ) {
+    this.#logger.log(
+      `Creating UserGameProgress for ${trackedAccount.gamingService}:${
+        trackedAccount.accountUserName
+      }:${storedGameId}${gameName ? ":" + gameName : ""}`
+    );
+
     const allGameStoredAchievements = await this.findAllStoredGameAchievements(
       storedGameId
     );
 
-    return await this.db.userGameProgress.create({
+    const newUserGameProgress = await this.db.userGameProgress.create({
       data: {
         gameId: storedGameId,
         trackedAccountId: trackedAccount.id,
@@ -156,6 +163,16 @@ export class DbService implements OnModuleInit {
         }
       }
     });
+
+    this.#logger.log(
+      `Created UserGameProgress for ${trackedAccount.gamingService}:${
+        trackedAccount.accountUserName
+      }:${storedGameId}${gameName ? ":" + gameName : ""} as ${
+        newUserGameProgress.id
+      }`
+    );
+
+    return newUserGameProgress;
   }
 
   async findAllHighPriorityUsers() {
@@ -317,7 +334,7 @@ export class DbService implements OnModuleInit {
     // It's easier and faster to do this than try to filter by what's already unlocked.
     await this.#cleanUserGameProgress(existingUserGameProgress);
 
-    return await this.db.userGameProgress.update({
+    const updatedUserGameProgress = await this.db.userGameProgress.update({
       where: { id: existingUserGameProgress.id },
       include: { earnedAchievements: true },
       data: {
@@ -340,6 +357,12 @@ export class DbService implements OnModuleInit {
         }
       }
     });
+
+    this.#logger.log(
+      `Updated UserGameProgress for ${existingUserGameProgress.trackedAccountId}:${existingUserGameProgress.id}`
+    );
+
+    return updatedUserGameProgress;
   }
 
   async updateMappedCompleteGame(
