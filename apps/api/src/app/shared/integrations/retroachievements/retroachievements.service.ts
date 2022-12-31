@@ -28,6 +28,11 @@ export class RetroachievementsService {
     private readonly dbService: DbService
   ) {}
 
+  /**
+   * Given a list of serviceTitleIds, retrieve those titles from
+   * RetroAchievements as well as their achievements and store them
+   * as Game and GameAchievement entities in our DB.
+   */
   async addRetroachievementsTitlesToDb(targetServiceTitleIds: string[]) {
     const addedGames: Game[] = [];
 
