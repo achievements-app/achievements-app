@@ -7,8 +7,8 @@ import client from "./utils/retroachievements-client";
 export class RetroachievementsDataService {
   // SEE: https://github.dev/RetroAchievements/RAWeb/blob/ae5bf5e49246c0f50582177bdab9dd0e88f0a7d1/app/Api/RouteServiceProvider.php#L24-L25
   #rateLimiter = new RateLimiter({
-    tokensPerInterval: 60,
-    interval: "minute"
+    tokensPerInterval: 1,
+    interval: "second"
   });
 
   // SEE: https://github.dev/RetroAchievements/RAWeb/blob/master/public/API/API_GetUserCompletedGames.php
