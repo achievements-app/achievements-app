@@ -8,6 +8,7 @@ type MappedGameRequiredProps = Pick<
 type MappedGameOptionalProps = Partial<
   Pick<
     Game,
+    | "coverImageUrl"
     | "gamePlatforms"
     | "knownPlayerCount"
     | "xboxAchievementsSchemaKind"

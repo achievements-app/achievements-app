@@ -56,6 +56,7 @@ export class DbService implements OnModuleInit {
               mappedCompleteGame.xboxAchievementsSchemaKind,
             isStale: false,
             psnServiceName: mappedCompleteGame.psnServiceName,
+            coverImageUrl: mappedCompleteGame.coverImageUrl,
             achievements: {
               createMany: {
                 data: mappedCompleteGame.achievements.map((achievement) => ({
@@ -93,6 +94,7 @@ export class DbService implements OnModuleInit {
         xboxAchievementsSchemaKind:
           mappedCompleteGame.xboxAchievementsSchemaKind,
         isStale: false,
+        coverImageUrl: mappedCompleteGame.coverImageUrl,
         psnServiceName: mappedCompleteGame.psnServiceName,
         achievements: {
           createMany: {
@@ -427,6 +429,7 @@ export class DbService implements OnModuleInit {
         name: mappedCompleteGame.name,
         gamePlatforms: mappedCompleteGame.gamePlatforms,
         isStale: false,
+        coverImageUrl: mappedCompleteGame.coverImageUrl,
         xboxAchievementsSchemaKind:
           mappedCompleteGame.xboxAchievementsSchemaKind,
         psnServiceName: mappedCompleteGame.psnServiceName

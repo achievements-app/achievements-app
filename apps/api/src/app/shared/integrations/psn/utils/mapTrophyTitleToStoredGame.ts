@@ -16,6 +16,7 @@ export const mapTrophyTitleToStoredGame = (
     knownUserEarnedAchievementCount,
     name: trophyTitle.trophyTitleName,
     gamingService: "PSN",
+    coverImageUrl: trophyTitle.trophyTitleIconUrl,
     psnServiceName: trophyTitle.trophyTitlePlatform.includes("PS5")
       ? "trophy2"
       : "trophy",

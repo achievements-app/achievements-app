@@ -13,6 +13,9 @@ export const mapGameInfoExtendedToCompleteGame = (
     gamingService: "RA",
     serviceTitleId: String(gameInfoExtended.id as number),
     knownPlayerCount: gameInfoExtended.numDistinctPlayersHardcore,
+    coverImageUrl: gameInfoExtended.imageIcon
+      ? `https://retroachievements.org${gameInfoExtended.imageIcon}`
+      : undefined,
     achievements: gameInfoExtended.achievements.map(
       mapAchievementToMappedGameAchievement
     )

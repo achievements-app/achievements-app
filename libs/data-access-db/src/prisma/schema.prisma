@@ -15,6 +15,7 @@ model Game {
   gamingService              GamingService
   serviceTitleId             String
   gamePlatforms              String[]
+  coverImageUrl              String?
   knownPlayerCount           Int?
   xboxAchievementsSchemaKind String?
   psnServiceName             String?

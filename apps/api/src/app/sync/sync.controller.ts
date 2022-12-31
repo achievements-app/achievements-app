@@ -28,9 +28,13 @@ export class SyncController {
     private readonly syncQueueingService: SyncQueueingService
   ) {}
 
-  @Get("playground")
-  async playground() {
-    return { foo: "bar" };
+  @Get("refresh-games")
+  async refreshAllGames() {
+    await this.dbService.db.game.updateMany({
+      data: { isStale: true }
+    });
+
+    return { status: "success" };
   }
 
   @Get("full")

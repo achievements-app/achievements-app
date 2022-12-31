@@ -13,6 +13,7 @@ export const mapXboxDeepGameInfoToCompleteGame = (
     gamingService: "XBOX",
     serviceTitleId: xboxDeepGameInfo.titleId,
     xboxAchievementsSchemaKind: schemaKind,
+    coverImageUrl: xboxDeepGameInfo.displayImage,
     achievements: xboxDeepGameInfo.achievements.map(
       mapXboxAchievementToMappedGameAchievement
     )
