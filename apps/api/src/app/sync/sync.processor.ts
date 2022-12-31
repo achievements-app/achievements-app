@@ -4,6 +4,9 @@ import { type Job } from "bull";
 
 import { BaseProcessor } from "@/api/common/base.processor";
 import { DbService } from "@/api/shared/db/db.service";
+import { PsnService } from "@/api/shared/integrations/psn/psn.service";
+import { RetroachievementsService } from "@/api/shared/integrations/retroachievements/retroachievements.service";
+import { XboxService } from "@/api/shared/integrations/xbox/xbox.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
 import { SyncUserGameProgressPayload, SyncUserGamesPayload } from "./models";
@@ -16,8 +19,11 @@ export class SyncProcessor extends BaseProcessor {
 
   constructor(
     @InjectSentry() protected sentryClient: SentryService,
+    private readonly dbService: DbService,
+    private readonly psnService: PsnService,
+    private readonly retroachievementsService: RetroachievementsService,
     private readonly syncService: SyncService,
-    private readonly dbService: DbService
+    private readonly xboxService: XboxService
   ) {
     super(sentryClient);
   }
@@ -36,19 +42,20 @@ export class SyncProcessor extends BaseProcessor {
       existingGameServiceTitleIds,
       missingGameServiceTitleIds,
       staleGameServiceTitleIds
-    } = await this.syncService.getMissingAndPresentUserRetroachievementsGames(
-      job.data.trackedAccount.accountUserName
-    );
+    } =
+      await this.retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
+        job.data.trackedAccount.accountUserName
+      );
 
     // Add all the missing games and their achievements to our DB.
     const newlyAddedGames =
-      await this.syncService.addRetroachievementsTitlesToDb(
+      await this.retroachievementsService.addRetroachievementsTitlesToDb(
         missingGameServiceTitleIds
       );
 
     // Update all the stale games and their achievements in our DB.
     const updatedGames =
-      await this.syncService.updateRetroachievementsTitlesInDb(
+      await this.retroachievementsService.updateRetroachievementsTitlesInDb(
         staleGameServiceTitleIds
       );
 
@@ -88,7 +95,7 @@ export class SyncProcessor extends BaseProcessor {
         `Missing UserGameProgress for RA:${job.data.trackedAccount.id}:${job.data.storedGameId}`
       );
 
-      await this.syncService.createRetroachievementsUserGameProgress(
+      await this.retroachievementsService.createRetroachievementsUserGameProgress(
         job.data.storedGameId,
         job.data.trackedAccount,
         job.data.serviceTitleId
@@ -108,7 +115,7 @@ export class SyncProcessor extends BaseProcessor {
 
       // This will erase the existing achievements attached to
       // the UserGameProgress entity and create an entirely new set.
-      await this.syncService.updateRetroachievementsUserGameProgress(
+      await this.retroachievementsService.updateRetroachievementsUserGameProgress(
         foundUserGameProgress,
         job.data.storedGameId,
         job.data.trackedAccount,
@@ -141,7 +148,7 @@ export class SyncProcessor extends BaseProcessor {
         `Missing UserGameProgress for XBOX:${job.data.trackedAccount.id}:${job.data.storedGameId}`
       );
 
-      await this.syncService.createXboxUserGameProgress(
+      await this.xboxService.createXboxUserGameProgress(
         foundGame,
         job.data.trackedAccount
       );
@@ -166,7 +173,7 @@ export class SyncProcessor extends BaseProcessor {
 
         // This will erase the existing achievements attached to
         // the UserGameProgress entity and create an entirely new set.
-        await this.syncService.updateXboxUserGameProgress(
+        await this.xboxService.updateXboxUserGameProgress(
           foundUserGameProgress,
           foundGame,
           job.data.trackedAccount
@@ -179,7 +186,7 @@ export class SyncProcessor extends BaseProcessor {
   async processSyncXboxUserGames(job: Job<SyncUserGamesPayload>) {
     // Virtually all Xbox API calls require a XUID, not a gamertag.
     // We can exchange a gamertag for a XUID, so do that first.
-    const trackedAccount = await this.syncService.useTrackedAccountXuid(
+    const trackedAccount = await this.xboxService.useTrackedAccountXuid(
       job.data.trackedAccount
     );
 
@@ -192,20 +199,20 @@ export class SyncProcessor extends BaseProcessor {
       existingGameServiceTitleIds,
       missingGameServiceTitleIds,
       staleGameServiceTitleIds
-    } = await this.syncService.getMissingAndPresentUserXboxGames(
+    } = await this.xboxService.getMissingAndPresentUserXboxGames(
       trackedAccount.serviceAccountId,
       trackedAccount.accountUserName
     );
 
     // Add all the missing games and their achievements to our DB.
-    const newlyAddedGames = await this.syncService.addXboxTitlesToDb(
+    const newlyAddedGames = await this.xboxService.addXboxTitlesToDb(
       trackedAccount.serviceAccountId,
       missingGameServiceTitleIds,
       allUserGames
     );
 
     // Update all the stale games and their achievements in our DB.
-    const updatedGames = await this.syncService.updateXboxTitlesInDb(
+    const updatedGames = await this.xboxService.updateXboxTitlesInDb(
       trackedAccount.serviceAccountId,
       staleGameServiceTitleIds,
       allUserGames
@@ -227,7 +234,7 @@ export class SyncProcessor extends BaseProcessor {
 
   @Process({ name: syncJobNames.syncPsnUserGameProgress, concurrency: 6 })
   async processSyncPsnUserGameProgress(job: Job<SyncUserGameProgressPayload>) {
-    await this.syncService.updatePsnTitleAndProgressInDb(
+    await this.psnService.updatePsnTitleAndProgressInDb(
       job.data.trackedAccount,
       job.data.targetUserGame
     );
@@ -235,7 +242,7 @@ export class SyncProcessor extends BaseProcessor {
 
   @Process({ name: syncJobNames.syncPsnUserMissingGame, concurrency: 6 })
   async processSyncPsnUserMissingGame(job: Job<SyncUserGameProgressPayload>) {
-    await this.syncService.addPsnTitleAndProgressToDb(
+    await this.psnService.addPsnTitleAndProgressToDb(
       job.data.trackedAccount,
       job.data.targetUserGame
     );
@@ -245,7 +252,7 @@ export class SyncProcessor extends BaseProcessor {
   async processSyncPsnUserGames(job: Job<SyncUserGamesPayload>) {
     // Virtually all PSN API calls require an Account ID, not a username.
     // We can find an Account ID from a given username, so do that first.
-    const trackedAccount = await this.syncService.useTrackedAccountPsnAccountId(
+    const trackedAccount = await this.psnService.useTrackedAccountPsnAccountId(
       // DANGER: ONLY USE `job.data.trackedAccount` HERE.
       // EVERYWHERE ELSE, USE `trackedAccount`.
       job.data.trackedAccount
@@ -256,7 +263,7 @@ export class SyncProcessor extends BaseProcessor {
     // don't have stored, we'll need to fetch and store before we can store
     // the user's actual progress on the game.
     const { allUserGames, missingGameServiceTitleIds } =
-      await this.syncService.getMissingAndPresentUserPsnGames(
+      await this.psnService.getMissingAndPresentUserPsnGames(
         trackedAccount.serviceAccountId,
         job.data.trackedAccount.accountUserName
       );
@@ -284,7 +291,7 @@ export class SyncProcessor extends BaseProcessor {
     );
 
     const titleIdsNeedingUpdate =
-      await this.syncService.getPsnTitleIdsNeedingUserProgressUpdate(
+      await this.psnService.getPsnTitleIdsNeedingUserProgressUpdate(
         trackedAccount,
         // Don't do a double update of games being initially added to the DB.
         allUserGames.filter(
