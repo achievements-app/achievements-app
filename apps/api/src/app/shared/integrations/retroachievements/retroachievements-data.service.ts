@@ -1,23 +1,19 @@
 import { Injectable } from "@nestjs/common";
-import { RateLimiter } from "limiter";
 
-import client from "./utils/retroachievements-client";
+import type { RetroachievementsClientInstance } from "./models";
+import { initializeRetroAchievementsClientPool } from "./utils/initializeRetroAchievementsClientPool";
 
 @Injectable()
 export class RetroachievementsDataService {
-  // SEE: https://github.dev/RetroAchievements/RAWeb/blob/ae5bf5e49246c0f50582177bdab9dd0e88f0a7d1/app/Api/RouteServiceProvider.php#L24-L25
-  #rateLimiter = new RateLimiter({
-    tokensPerInterval: 1,
-    interval: "second"
-  });
+  #clientPool = initializeRetroAchievementsClientPool();
 
-  // SEE: https://github.dev/RetroAchievements/RAWeb/blob/master/public/API/API_GetUserCompletedGames.php
   async fetchAllUserGames(targetUserName: string) {
-    await this.#rateLimiter.removeTokens(1);
+    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 
-    const userCompletedGames = await client.getUserGameCompletionStats(
-      targetUserName
-    );
+    await clientInstance.limiter.removeTokens(1);
+
+    const userCompletedGames =
+      await clientInstance.client.getUserGameCompletionStats(targetUserName);
 
     // RetroAchievements returns each game potentially twice. This is because
     // softcore and hardcore mode are treated as separate games in their DB.
@@ -29,17 +25,31 @@ export class RetroachievementsDataService {
     targetUserName: string,
     serviceTitleId: number | string
   ) {
-    await this.#rateLimiter.removeTokens(1);
+    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 
-    return client.getUserProgressForGameId(
+    await clientInstance.limiter.removeTokens(1);
+
+    return clientInstance.client.getUserProgressForGameId(
       targetUserName,
       Number(serviceTitleId)
     );
   }
 
   async fetchDeepGameInfo(serviceTitleId: number | string) {
-    await this.#rateLimiter.removeTokens(1);
+    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 
-    return client.getExtendedGameInfoByGameId(Number(serviceTitleId));
+    await clientInstance.limiter.removeTokens(1);
+
+    return clientInstance.client.getExtendedGameInfoByGameId(
+      Number(serviceTitleId)
+    );
+  }
+
+  // We use a very naive load balancing strategy here.
+  // Just pick a random client from the pool, regardless of
+  // how loaded they currently are. For now, we can deal with
+  // sometimes randomly picking the most-burdened client.
+  #pickRandomClientFromPool(clientPool: RetroachievementsClientInstance[]) {
+    return clientPool[Math.floor(Math.random() * clientPool.length)];
   }
 }

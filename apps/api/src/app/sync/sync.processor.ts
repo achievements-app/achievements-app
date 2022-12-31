@@ -34,7 +34,7 @@ export class SyncProcessor extends BaseProcessor {
 
   @Process({
     name: syncJobNames.syncRetroachievementsUserGames,
-    concurrency: 1
+    concurrency: 2
   })
   async processSyncRetroachievementsUserGames(job: Job<SyncUserGamesPayload>) {
     // Get all the user games recorded on RA, as well as what games we
@@ -79,7 +79,7 @@ export class SyncProcessor extends BaseProcessor {
 
   @Process({
     name: syncJobNames.syncRetroachievementsUserGameProgress,
-    concurrency: 2
+    concurrency: 4
   })
   async processSyncRetroachievementsUserGameProgress(
     job: Job<SyncUserGameProgressPayload>
