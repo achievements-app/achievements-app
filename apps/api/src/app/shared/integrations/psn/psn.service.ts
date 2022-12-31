@@ -263,7 +263,7 @@ export class PsnService {
     };
   }
 
-  async #fetchUserPlayedGames(userAccountId: string) {
+  async #fetchUserPlayedGames(userAccountId: string): Promise<MappedGame[]> {
     this.#logger.log(
       `Fetching non-hidden user played games for PSN:${userAccountId}`
     );

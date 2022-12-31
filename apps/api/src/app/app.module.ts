@@ -4,6 +4,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { SentryModule } from "@ntegral/nestjs-sentry";
 
 import { AppController } from "./app.controller";
+import { PublicModule } from "./public/public.module";
 import { SyncModule } from "./sync/sync.module";
 
 @Module({
@@ -22,7 +23,8 @@ import { SyncModule } from "./sync/sync.module";
     }),
     ScheduleModule.forRoot(),
 
-    SyncModule
+    SyncModule,
+    PublicModule
   ],
   controllers: [AppController]
 })
