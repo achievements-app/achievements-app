@@ -12,6 +12,7 @@ export const mapGameInfoExtendedToCompleteGame = (
     gamePlatforms: [gameInfoExtended.consoleName as string],
     gamingService: "RA",
     serviceTitleId: String(gameInfoExtended.id as number),
+    knownPlayerCount: gameInfoExtended.numDistinctPlayersHardcore,
     achievements: gameInfoExtended.achievements.map(
       mapAchievementToMappedGameAchievement
     )
