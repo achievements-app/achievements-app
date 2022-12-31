@@ -24,6 +24,7 @@ export const mapTrophyResponsesToMappedGameAchievements = (
       name: titleTrophy.trophyName ?? "",
       description: titleTrophy.trophyDetail ?? null,
       serviceAchievementId: String(titleTrophy.trophyId),
+      psnGroupId: titleTrophy.trophyGroupId,
       psnTrophyKind: trophyTypeDictionary[titleTrophy.trophyType],
       sourceImageUrl: titleTrophy.trophyIconUrl ?? null,
       isEarned: matchingEarnedTrophy.earned ? true : false,

@@ -10,6 +10,7 @@ type MappedGameAchievementOptionalProps = Partial<
     GameAchievement,
     | "vanillaPoints"
     | "ratioPoints"
+    | "psnGroupId"
     | "psnTrophyKind"
     | "sourceImageUrl"
     | "knownEarnerCount"

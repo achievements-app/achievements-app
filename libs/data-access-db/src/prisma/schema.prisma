@@ -35,6 +35,7 @@ model GameAchievement {
   description           String?
   vanillaPoints         Int?
   ratioPoints           Int?
+  psnGroupId            String?
   psnTrophyKind         PsnTrophyKind?
   sourceImageUrl        String?
   knownEarnerCount      Int?
