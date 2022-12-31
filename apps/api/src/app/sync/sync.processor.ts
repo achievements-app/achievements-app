@@ -9,7 +9,11 @@ import { RetroachievementsService } from "@/api/shared/integrations/retroachieve
 import { XboxService } from "@/api/shared/integrations/xbox/xbox.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import { SyncUserGameProgressPayload, SyncUserGamesPayload } from "./models";
+import {
+  SyncPsnGamePayload,
+  SyncUserGameProgressPayload,
+  SyncUserGamesPayload
+} from "./models";
 import { SyncService } from "./sync.service";
 import { syncJobNames } from "./sync-job-names";
 
@@ -137,9 +141,9 @@ export class SyncProcessor extends BaseProcessor {
         job.data.storedGameId
       );
 
-    const foundGame = await this.dbService.db.game.findFirst({
-      where: { id: job.data.storedGameId }
-    });
+    const foundGame = await this.dbService.findGameByServiceTitleId(
+      job.data.serviceTitleId
+    );
 
     // If a UserGameProgress entity doesn't exist, we have to
     // create a new one before doing anything else.
@@ -233,18 +237,18 @@ export class SyncProcessor extends BaseProcessor {
   }
 
   @Process({ name: syncJobNames.syncPsnUserGameProgress, concurrency: 6 })
-  async processSyncPsnUserGameProgress(job: Job<SyncUserGameProgressPayload>) {
+  async processSyncPsnUserGameProgress(job: Job<SyncPsnGamePayload>) {
     await this.psnService.updatePsnTitleAndProgressInDb(
       job.data.trackedAccount,
-      job.data.targetUserGame
+      job.data.userGame
     );
   }
 
   @Process({ name: syncJobNames.syncPsnUserMissingGame, concurrency: 6 })
-  async processSyncPsnUserMissingGame(job: Job<SyncUserGameProgressPayload>) {
+  async processSyncPsnUserMissingGame(job: Job<SyncPsnGamePayload>) {
     await this.psnService.addPsnTitleAndProgressToDb(
       job.data.trackedAccount,
-      job.data.targetUserGame
+      job.data.userGame
     );
   }
 

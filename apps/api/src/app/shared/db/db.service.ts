@@ -192,6 +192,50 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  async findAllCompleteUserGameProgressByGamingService(
+    trackedAccountId: string,
+    gamingService: GamingService
+  ) {
+    this.#logger.log(
+      `Finding all ${gamingService} complete UserGameProgress for ${trackedAccountId}`
+    );
+
+    const allUserGameProgress = await this.db.userGameProgress.findMany({
+      where: {
+        trackedAccountId,
+        game: { gamingService }
+      },
+      include: {
+        earnedAchievements: { select: { id: true } },
+        game: {
+          select: { serviceTitleId: true }
+        }
+      }
+    });
+
+    this.#logger.log(
+      `Found ${allUserGameProgress.length} complete UserGameProgress for ${trackedAccountId}`
+    );
+
+    return allUserGameProgress;
+  }
+
+  async findAllTrackedAccountUserGameProgressByGameIds(
+    trackedAccountId: string,
+    gameIds: string[]
+  ) {
+    return await this.db.userGameProgress.findMany({
+      where: {
+        trackedAccountId,
+        gameId: { in: gameIds }
+      },
+      include: {
+        game: true,
+        earnedAchievements: { include: { achievement: true } }
+      }
+    });
+  }
+
   async findCompleteUserGameProgress(
     trackedAccountId: string,
     storedGameId: string
@@ -210,19 +254,16 @@ export class DbService implements OnModuleInit {
     });
   }
 
-  async findAllTrackedAccountUserGameProgressByGameIds(
-    trackedAccountId: string,
-    gameIds: string[]
+  async findGameByServiceTitleId(serviceTitleId: string) {
+    return await this.db.game.findFirst({ where: { serviceTitleId } });
+  }
+
+  async findMultipleGamesByServiceTitleIds(
+    serviceTitleIds: string[],
+    gamingService?: GamingService
   ) {
-    return await this.db.userGameProgress.findMany({
-      where: {
-        trackedAccountId,
-        gameId: { in: gameIds }
-      },
-      include: {
-        game: true,
-        earnedAchievements: { include: { achievement: true } }
-      }
+    return await this.db.game.findMany({
+      where: { gamingService, serviceTitleId: { in: serviceTitleIds } }
     });
   }
 

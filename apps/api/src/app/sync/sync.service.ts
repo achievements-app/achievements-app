@@ -8,7 +8,11 @@ import type { Game, TrackedAccount } from "@achievements-app/data-access-db";
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import { SyncQueuePayload, SyncUserGameProgressPayload } from "./models";
+import {
+  SyncPsnGamePayload,
+  SyncQueuePayload,
+  SyncUserGameProgressPayload
+} from "./models";
 import { syncJobNames } from "./sync-job-names";
 
 @Injectable()
@@ -26,12 +30,11 @@ export class SyncService {
     trackedAccount: TrackedAccount
   ) {
     // We first want to get the list of all titles needing a progress sync.
-    const allTargetStoredGames = await this.dbService.db.game.findMany({
-      where: {
-        gamingService: "RA",
-        serviceTitleId: { in: serviceTitleIds }
-      }
-    });
+    const allTargetStoredGames =
+      await this.dbService.findMultipleGamesByServiceTitleIds(
+        serviceTitleIds,
+        "RA"
+      );
 
     const allServiceTitleIdsNeedingSync =
       await this.#getAllRetroachievementsGamesRequiringProgressSync(
@@ -77,14 +80,15 @@ export class SyncService {
         (userGame) => userGame.serviceTitleId === missingGameServiceTitleId
       );
 
-      await this.syncQueue.add(
-        syncJobNames.syncPsnUserMissingGame,
-        {
-          trackedAccount,
-          targetUserGame
-        },
-        { attempts: 3, backoff: 15000 }
-      );
+      const payload: SyncPsnGamePayload = {
+        trackedAccount,
+        userGame: targetUserGame
+      };
+
+      await this.syncQueue.add(syncJobNames.syncPsnUserMissingGame, payload, {
+        attempts: 3,
+        backoff: 15000
+      });
     }
   }
 
@@ -98,14 +102,15 @@ export class SyncService {
         (userGame) => userGame.serviceTitleId === serviceTitleIdNeedingSync
       );
 
-      await this.syncQueue.add(
-        syncJobNames.syncPsnUserGameProgress,
-        {
-          trackedAccount,
-          targetUserGame
-        },
-        { attempts: 3, backoff: 15000 }
-      );
+      const payload: SyncPsnGamePayload = {
+        trackedAccount,
+        userGame: targetUserGame
+      };
+
+      await this.syncQueue.add(syncJobNames.syncPsnUserGameProgress, payload, {
+        attempts: 3,
+        backoff: 15000
+      });
     }
   }
 
@@ -115,12 +120,11 @@ export class SyncService {
     trackedAccount: TrackedAccount
   ) {
     // We first want to get the list of all titles needing a progress sync.
-    const allTargetStoredGames = await this.dbService.db.game.findMany({
-      where: {
-        gamingService: "XBOX",
-        serviceTitleId: { in: serviceTitleIds }
-      }
-    });
+    const allTargetStoredGames =
+      await this.dbService.findMultipleGamesByServiceTitleIds(
+        serviceTitleIds,
+        "XBOX"
+      );
 
     // Some really old mobile games might still be on the user's account
     // but we cannot actually fetch the progress for these titles anymore.

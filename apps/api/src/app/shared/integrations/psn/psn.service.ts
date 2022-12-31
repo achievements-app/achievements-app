@@ -104,23 +104,15 @@ export class PsnService {
     const serviceTitleIdsNeedingUpdate: string[] = [];
 
     const allPsnUserGameProgress =
-      await this.dbService.db.userGameProgress.findMany({
-        where: {
-          trackedAccountId: trackedAccount.id,
-          game: { gamingService: "PSN" }
-        },
-        include: {
-          earnedAchievements: { select: { id: true } },
-          game: {
-            select: { serviceTitleId: true }
-          }
-        }
-      });
+      await this.dbService.findAllCompleteUserGameProgressByGamingService(
+        trackedAccount.id,
+        "PSN"
+      );
 
     for (const userReportedGame of userReportedGames) {
-      const doesGameExist = await this.dbService.db.game.findFirst({
-        where: { serviceTitleId: userReportedGame.serviceTitleId }
-      });
+      const doesGameExist = await this.dbService.findGameByServiceTitleId(
+        userReportedGame.serviceTitleId
+      );
 
       const foundUserGameProgress = allPsnUserGameProgress.find(
         (userGameProgress) =>
