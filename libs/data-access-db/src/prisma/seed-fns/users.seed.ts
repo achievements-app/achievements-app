@@ -27,7 +27,10 @@ const newUsers: NewUser[] = [
   {
     userName: "rayfinkel",
     discordId: "364942899118604299",
-    trackedAccounts: [{ accountUserName: "Rayfinkel", gamingService: "RA" }]
+    trackedAccounts: [
+      { accountUserName: "Rayfinkel", gamingService: "RA" },
+      { accountUserName: "rayfinkelz", gamingService: "PSN" }
+    ]
   },
   {
     userName: "Barra",
@@ -54,7 +57,8 @@ const newUsers: NewUser[] = [
     discordId: "280439586537340929",
     trackedAccounts: [
       { accountUserName: "xelnia", gamingService: "RA" },
-      { accountUserName: "xelnia", gamingService: "PSN" }
+      { accountUserName: "xelnia", gamingService: "PSN" },
+      { accountUserName: "xelnia", gamingService: "XBOX" }
     ]
   },
   {

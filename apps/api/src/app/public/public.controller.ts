@@ -1,13 +1,16 @@
 import {
+  Body,
   Controller,
   Get,
   HttpException,
   HttpStatus,
-  Param
+  Param,
+  Post
 } from "@nestjs/common";
 
 import type {
   GameAchievement,
+  GamingService,
   UserEarnedAchievement
 } from "@achievements-app/data-access-db";
 
@@ -21,6 +24,28 @@ export class PublicController {
   #logger = new Logger(PublicController.name);
 
   constructor(private readonly dbService: DbService) {}
+
+  @Post("user/trackedAccount")
+  async addTrackedAccount(
+    @Body()
+    newAccount: {
+      gamingService: GamingService;
+      userName: string;
+      serviceAccountUserName: string;
+    }
+  ) {
+    const foundUser = await this.dbService.db.user.findFirst({
+      where: { userName: newAccount.userName }
+    });
+
+    return await this.dbService.db.trackedAccount.create({
+      data: {
+        userId: foundUser.id,
+        accountUserName: newAccount.serviceAccountUserName,
+        gamingService: newAccount.gamingService
+      }
+    });
+  }
 
   @Get("user/psn/:userName")
   async getPsnUserProgress(@Param("userName") userName: string) {
