@@ -9,14 +9,15 @@ import type {
   MappedCompleteGame,
   MappedGameAchievement
 } from "@achievements-app/data-access-common-models";
-import type {
+import {
+  db,
   GameAchievement,
   GamingService,
   PrismaPromise,
   TrackedAccount,
-  UserGameProgress
+  UserGameProgress,
+  UserSyncPriority
 } from "@achievements-app/data-access-db";
-import { db } from "@achievements-app/data-access-db";
 
 @Injectable()
 export class DbService implements OnModuleInit {
@@ -154,6 +155,15 @@ export class DbService implements OnModuleInit {
           }
         }
       }
+    });
+  }
+
+  async findAllHighPriorityUsers() {
+    return await this.db.user.findMany({
+      where: {
+        syncPriority: UserSyncPriority.High
+      },
+      include: { trackedAccounts: true }
     });
   }
 

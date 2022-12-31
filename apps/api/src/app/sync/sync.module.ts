@@ -10,6 +10,8 @@ import { LoggerModule } from "@/api/shared/logger/logger.module";
 import { SyncController } from "./sync.controller";
 import { SyncProcessor } from "./sync.processor";
 import { SyncService } from "./sync.service";
+import { SyncQueueingService } from "./sync-queueing.service";
+import { SyncSchedulerService } from "./sync-scheduler.service";
 
 @Module({
   imports: [
@@ -24,6 +26,11 @@ import { SyncService } from "./sync.service";
     LoggerModule
   ],
   controllers: [SyncController],
-  providers: [SyncProcessor, SyncService]
+  providers: [
+    SyncProcessor,
+    SyncService,
+    SyncQueueingService,
+    SyncSchedulerService
+  ]
 })
 export class SyncModule {}

@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 
 import type { GamingService, PrismaPromise } from "../index";
-import db from "../index";
+import db, { UserSyncPriority } from "../index";
 
 interface NewUser {
   userName: string;
@@ -16,12 +16,11 @@ const newUsers: NewUser[] = [
   {
     userName: "wc",
     discordId: "199221906061131785",
+
     trackedAccounts: [
       { accountUserName: "WCopeland", gamingService: "RA" },
       { accountUserName: "UsableDayv", gamingService: "XBOX" },
       { accountUserName: "WCopeland1", gamingService: "XBOX" },
-      { accountUserName: "ViaFix", gamingService: "XBOX" },
-      { accountUserName: "HippopotamusRex", gamingService: "RA" },
       { accountUserName: "NeutraLiTe", gamingService: "PSN" }
     ]
   },
@@ -153,6 +152,7 @@ export const seedUsers = async () => {
       db.user.create({
         data: {
           userName: newUser.userName,
+          syncPriority: UserSyncPriority.High,
           discordId: newUser.discordId,
           trackedAccounts: {
             createMany: {

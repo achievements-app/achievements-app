@@ -13,8 +13,9 @@ import { Queue } from "bull";
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import type { SyncQueuePayload, SyncUserGamesPayload } from "./models";
+import type { SyncQueuePayload } from "./models";
 import { syncJobNames } from "./sync-job-names";
+import { SyncQueueingService } from "./sync-queueing.service";
 
 @Controller("sync")
 export class SyncController {
@@ -23,7 +24,8 @@ export class SyncController {
   constructor(
     @InjectQueue("sync")
     private readonly syncQueue: Queue<SyncQueuePayload>,
-    private readonly dbService: DbService
+    private readonly dbService: DbService,
+    private readonly syncQueueingService: SyncQueueingService
   ) {}
 
   @Get("playground")
@@ -88,20 +90,9 @@ export class SyncController {
       throw new HttpException("No tracked account.", HttpStatus.NOT_FOUND);
     }
 
-    const payload: SyncUserGamesPayload = {
-      trackedAccount: foundTrackedAccount
-    };
-
-    this.#logger.logQueueingJob(
-      syncJobNames.syncRetroachievementsUserGames,
-      payload
+    await this.syncQueueingService.beginRetroachievementsAccountSync(
+      foundTrackedAccount
     );
-    const newJob = await this.syncQueue.add(
-      syncJobNames.syncRetroachievementsUserGames,
-      payload,
-      { attempts: 6, backoff: 60000 }
-    );
-    this.#logger.logQueuedJob(newJob.name, newJob.id);
 
     return { status: "success" };
   }
@@ -145,17 +136,7 @@ export class SyncController {
       throw new HttpException("No tracked account.", HttpStatus.NOT_FOUND);
     }
 
-    const payload: SyncUserGamesPayload = {
-      trackedAccount: foundTrackedAccount
-    };
-
-    this.#logger.logQueueingJob(syncJobNames.syncXboxUserGames, payload);
-    const newJob = await this.syncQueue.add(
-      syncJobNames.syncXboxUserGames,
-      payload,
-      { attempts: 6, backoff: 60000 }
-    );
-    this.#logger.logQueuedJob(newJob.name, newJob.id);
+    await this.syncQueueingService.beginXboxAccountSync(foundTrackedAccount);
 
     return { status: "success" };
   }
@@ -170,17 +151,7 @@ export class SyncController {
       throw new HttpException("No tracked account.", HttpStatus.NOT_FOUND);
     }
 
-    const payload: SyncUserGamesPayload = {
-      trackedAccount: foundTrackedAccount
-    };
-
-    this.#logger.logQueueingJob(syncJobNames.syncPsnUserGames, payload);
-    const newJob = await this.syncQueue.add(
-      syncJobNames.syncPsnUserGames,
-      payload,
-      { attempts: 5, backoff: 60000 }
-    );
-    this.#logger.logQueuedJob(newJob.name, newJob.id);
+    await this.syncQueueingService.beginPsnAccountSync(foundTrackedAccount);
 
     return { status: "success" };
   }

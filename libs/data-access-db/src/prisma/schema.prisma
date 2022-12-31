@@ -48,11 +48,12 @@ model GameAchievement {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userName  String
-  discordId String?
+  id           String            @id @default(uuid())
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  userName     String
+  discordId    String?
+  syncPriority UserSyncPriority?
 
   trackedAccounts TrackedAccount[]
 }
@@ -111,4 +112,8 @@ enum PsnTrophyKind {
   Silver
   Gold
   Platinum
+}
+
+enum UserSyncPriority {
+  High
 }

@@ -1,5 +1,6 @@
 import { BullModule } from "@nestjs/bull";
 import { Module } from "@nestjs/common";
+import { ScheduleModule } from "@nestjs/schedule";
 import { SentryModule } from "@ntegral/nestjs-sentry";
 
 import { AppController } from "./app.controller";
@@ -19,6 +20,7 @@ import { SyncModule } from "./sync/sync.module";
       dsn: process.env["SENTRY_DSN"] ?? "sentry_io_dsn",
       environment: process.env.NODE_ENV
     }),
+    ScheduleModule.forRoot(),
 
     SyncModule
   ],

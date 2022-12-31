@@ -876,10 +876,6 @@ export class SyncService {
           `Work needed for ${trackedAccount.accountUserName}:${serviceUserGame.name}:${serviceUserGame.serviceTitleId}`
         );
         serviceTitleIdsNeedingSync.push(serviceUserGame.serviceTitleId);
-      } else {
-        this.#logger.verbose(
-          `No work needed for ${trackedAccount.accountUserName}:${serviceUserGame.name}:${serviceUserGame.serviceTitleId}`
-        );
       }
     }
 
@@ -929,10 +925,6 @@ export class SyncService {
           `Work needed for ${trackedAccount.accountUserName} ${serviceUserGame.name}:${serviceUserGame.serviceTitleId}`
         );
         serviceTitleIdsNeedingSync.push(serviceUserGame.serviceTitleId);
-      } else {
-        this.#logger.log(
-          `No work needed for ${trackedAccount.accountUserName} ${serviceUserGame.name}:${serviceUserGame.serviceTitleId}`
-        );
       }
     }
 
