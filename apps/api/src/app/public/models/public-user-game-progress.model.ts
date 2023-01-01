@@ -1,28 +1,19 @@
 import type { GamingService } from "@achievements-app/data-access-db";
 
-interface TrophyTypeCounts {
-  bronze: number;
-  silver: number;
-  gold: number;
-  platinum: number;
-}
-
-interface PublicUserEarnedAchievement {
-  isEarned: boolean;
-
-  earnedRate?: number;
-  points?: number;
-  type?: "bronze" | "silver" | "gold" | "platinum";
-  earnedOn?: string;
-}
+import type { PublicUserAchievement } from "./public-user-achievement.model";
+import type { TrophyTypeCounts } from "./trophy-type-counts.model";
 
 export interface PublicUserGameProgress {
-  gameName: string;
+  name: string;
   platforms: string[];
   gamingService: GamingService;
+  imageUrl: string;
+  lastEarnedOn: string | null;
 
-  achievementsList: PublicUserEarnedAchievement[];
+  achievements: PublicUserAchievement[];
 
+  completedOn: string | null;
+  gameTotalPossiblePoints?: number;
   gameTrophyTypeCounts?: TrophyTypeCounts;
   userEarnedTrophyTypeCounts?: TrophyTypeCounts;
 }
