@@ -50,6 +50,14 @@ export class PublicController {
     });
   }
 
+  @Get("user/highPriority")
+  async getAllHighPriorityUsers() {
+    return await this.dbService.db.user.findMany({
+      where: { syncPriority: "High" },
+      select: { userName: true, discordId: true }
+    });
+  }
+
   @Get("user/:userName")
   async getAllUserProgress(
     @Param("userName") userName: string
@@ -78,14 +86,6 @@ export class PublicController {
     }
 
     return allProgress;
-  }
-
-  @Get("user/high-priority")
-  async getAllHighPriorityUsers() {
-    return this.dbService.db.user.findMany({
-      where: { syncPriority: "High" },
-      select: { userName: true, discordId: true }
-    });
   }
 
   @Get("user/psn/:userName")
