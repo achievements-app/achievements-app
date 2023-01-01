@@ -6,11 +6,9 @@ import type {
   UserEarnedAchievement
 } from "@achievements-app/data-access-db";
 
-import type {
-  CompleteUserGameProgress,
-  PublicUserGameProgress,
-  TrophyTypeCounts
-} from "../models";
+import type { CompleteUserGameProgress } from "@/api/shared/db/models";
+
+import type { PublicUserGameProgress, TrophyTypeCounts } from "../models";
 import { buildGamePublicUserAchievements } from "./buildGamePublicUserAchievements";
 
 dayjs.extend(minMax);

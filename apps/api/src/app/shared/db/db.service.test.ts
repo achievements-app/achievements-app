@@ -48,12 +48,12 @@ describe("Service: DbService", () => {
       // ACT
       await dbService.addMappedCompleteGame(mockMappedCompleteGame);
 
+      // ASSERT
       const foundAddedGame = await db.game.findFirst({
         where: { serviceTitleId: mockMappedCompleteGame.serviceTitleId },
         include: { achievements: true }
       });
 
-      // ASSERT
       expect(foundAddedGame).toBeTruthy();
       expect(foundAddedGame.achievements.length).toEqual(
         mockMappedCompleteGame.achievements.length

@@ -14,6 +14,15 @@ export const generateMappedGameAchievement = (
     knownEarnerPercentage: faker.datatype.number(100),
     ratioPoints: faker.datatype.number(5000),
     vanillaPoints: faker.helpers.arrayElement([1, 2, 5, 10, 20, 25, 50, 100]),
+    psnGroupId: faker.random.word(),
+    isEarned: faker.datatype.boolean(),
+    psnTrophyKind: faker.helpers.arrayElement([
+      "Bronze",
+      "Silver",
+      "Gold",
+      "Platinum"
+    ]),
+    sourceImageUrl: faker.internet.url(),
     ...mappedGameAchievementProps
   };
 };

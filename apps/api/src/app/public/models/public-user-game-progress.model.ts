@@ -4,15 +4,14 @@ import type { PublicUserAchievement } from "./public-user-achievement.model";
 import type { TrophyTypeCounts } from "./trophy-type-counts.model";
 
 export interface PublicUserGameProgress {
-  name: string;
-  platforms: string[];
+  achievements: PublicUserAchievement[];
+  completedOn: string | null;
   gamingService: GamingService;
   imageUrl: string;
   lastEarnedOn: string | null;
+  name: string;
+  platforms: string[];
 
-  achievements: PublicUserAchievement[];
-
-  completedOn: string | null;
   gameTotalPossiblePoints?: number;
   gameTrophyTypeCounts?: TrophyTypeCounts;
   userEarnedTrophyTypeCounts?: TrophyTypeCounts;

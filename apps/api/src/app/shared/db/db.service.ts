@@ -19,6 +19,8 @@ import {
   UserSyncPriority
 } from "@achievements-app/data-access-db";
 
+import type { CompleteUserGameProgress } from "./models";
+
 @Injectable()
 export class DbService implements OnModuleInit {
   db = db;
@@ -32,51 +34,6 @@ export class DbService implements OnModuleInit {
     this.db.$on("beforeExit", async () => {
       await app.close();
     });
-  }
-
-  async addMultipleMappedCompleteGames(
-    mappedCompleteGames: MappedCompleteGame[]
-  ) {
-    this.#logger.log(
-      `Adding ${mappedCompleteGames.length} titles: ${mappedCompleteGames.map(
-        (game) => game.name
-      )}`
-    );
-
-    const addedGames = await this.db.$transaction(
-      mappedCompleteGames.map((mappedCompleteGame) =>
-        this.db.game.create({
-          data: {
-            gamingService: mappedCompleteGame.gamingService,
-            name: mappedCompleteGame.name,
-            serviceTitleId: mappedCompleteGame.serviceTitleId,
-            knownPlayerCount: mappedCompleteGame.knownPlayerCount,
-            gamePlatforms: mappedCompleteGame.gamePlatforms,
-            xboxAchievementsSchemaKind:
-              mappedCompleteGame.xboxAchievementsSchemaKind,
-            isStale: false,
-            psnServiceName: mappedCompleteGame.psnServiceName,
-            coverImageUrl: mappedCompleteGame.coverImageUrl,
-            achievements: {
-              createMany: {
-                data: mappedCompleteGame.achievements.map((achievement) => ({
-                  ...achievement,
-                  earnedOn: undefined,
-                  isEarned: undefined
-                })),
-                skipDuplicates: true
-              }
-            }
-          }
-        })
-      )
-    );
-
-    this.#logger.log(
-      `Added ${mappedCompleteGames.length} MappedCompleteGame entities to the DB`
-    );
-
-    return addedGames;
   }
 
   async addMappedCompleteGame(mappedCompleteGame: MappedCompleteGame) {
@@ -179,9 +136,7 @@ export class DbService implements OnModuleInit {
 
   async findAllHighPriorityUsers() {
     return await this.db.user.findMany({
-      where: {
-        syncPriority: UserSyncPriority.High
-      },
+      where: { syncPriority: UserSyncPriority.High },
       include: { trackedAccounts: true }
     });
   }
@@ -194,6 +149,31 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  async findAllCompleteUserGameProgress(
+    trackedAccountId: string
+  ): Promise<CompleteUserGameProgress[]> {
+    this.#logger.log(
+      `Finding all CompleteUserGameProgress entities for ${trackedAccountId}`
+    );
+
+    const allCompleteUserGameProgresses: CompleteUserGameProgress[] =
+      await this.db.userGameProgress.findMany({
+        where: { trackedAccountId },
+        include: {
+          earnedAchievements: {
+            include: { achievement: true }
+          },
+          game: { include: { achievements: true } }
+        }
+      });
+
+    this.#logger.log(
+      `Found ${allCompleteUserGameProgresses.length} CompleteUserGameProgress entities for ${trackedAccountId}`
+    );
+
+    return allCompleteUserGameProgresses;
+  }
+
   async findAllCompleteUserGameProgressByGamingService(
     trackedAccountId: string,
     gamingService: GamingService
@@ -203,15 +183,10 @@ export class DbService implements OnModuleInit {
     );
 
     const allUserGameProgress = await this.db.userGameProgress.findMany({
-      where: {
-        trackedAccountId,
-        game: { gamingService }
-      },
+      where: { trackedAccountId, game: { gamingService } },
       include: {
         earnedAchievements: { select: { id: true } },
-        game: {
-          select: { serviceTitleId: true }
-        }
+        game: { select: { serviceTitleId: true } }
       }
     });
 
@@ -227,10 +202,7 @@ export class DbService implements OnModuleInit {
     gameIds: string[]
   ) {
     return await this.db.userGameProgress.findMany({
-      where: {
-        trackedAccountId,
-        gameId: { in: gameIds }
-      },
+      where: { trackedAccountId, gameId: { in: gameIds } },
       include: {
         game: true,
         earnedAchievements: { include: { achievement: true } }
