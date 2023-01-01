@@ -432,7 +432,12 @@ describe("Service: DbService", () => {
       });
 
       expect(updatedGame.name).toContain("(Anniversary Edition)");
-      expect(updatedGame.achievements[0].vanillaPoints).toEqual(999);
+
+      const foundUpdatedAchievement = updatedGame.achievements.find(
+        (achievement) => achievement.vanillaPoints === 999
+      );
+      expect(foundUpdatedAchievement).toBeTruthy();
+
       expect(updatedGame.achievements.length).toEqual(6);
     });
   });

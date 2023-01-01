@@ -3,6 +3,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -26,6 +27,52 @@ export class PublicController {
     private readonly dbService: DbService,
     private readonly publicService: PublicService
   ) {}
+
+  @Delete("user/trackedAccount")
+  async removeTrackedAccount(
+    @Body()
+    existingAccount: {
+      gamingService: GamingService;
+      serviceAccountUserName: string;
+    }
+  ) {
+    const foundTrackedAccount =
+      await this.dbService.db.trackedAccount.findFirst({
+        where: {
+          gamingService: existingAccount.gamingService,
+          accountUserName: existingAccount.serviceAccountUserName
+        }
+      });
+
+    if (foundTrackedAccount) {
+      const allEarnedAchievements =
+        await this.dbService.db.userEarnedAchievement.findMany({
+          where: {
+            gameProgressEntity: { trackedAccountId: foundTrackedAccount.id }
+          }
+        });
+
+      await this.dbService.db.userEarnedAchievement.deleteMany({
+        where: {
+          id: {
+            in: allEarnedAchievements.map(
+              (earnedAchievement) => earnedAchievement.id
+            )
+          }
+        }
+      });
+
+      await this.dbService.db.userGameProgress.deleteMany({
+        where: { trackedAccountId: foundTrackedAccount.id }
+      });
+
+      await this.dbService.db.trackedAccount.delete({
+        where: { id: foundTrackedAccount.id }
+      });
+
+      return { status: "success" };
+    }
+  }
 
   @Post("user/trackedAccount")
   async addTrackedAccount(
