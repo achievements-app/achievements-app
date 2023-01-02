@@ -45,7 +45,7 @@ describe("Service: RetroachievementsService", () => {
     expect(retroachievementsService).toBeTruthy();
   });
 
-  it("given a set of title IDs, can fetch the title from RetroAchievements and store its metadata in our DB", async () => {
+  it("given a set of title IDs, can fetch the titles from RetroAchievements and store their metadatas in our DB", async () => {
     // ARRANGE
     const mockServiceTitleIds = ["12345"];
     const mockServiceTitle = generateRaGameInfoExtended(

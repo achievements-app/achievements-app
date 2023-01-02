@@ -1,12 +1,63 @@
 import { faker } from "@faker-js/faker";
 
 import {
+  XboxDeepGameInfo,
   XboxLegacyAchievementEntity,
   XboxLegacyTitleHistoryEntity,
   XboxModernAchievementEntity,
   XboxModernTitleHistoryEntity,
+  XboxSanitizedAchievementEntity,
+  XboxSanitizedTitleHistoryEntity,
   XboxTitleMetadata
 } from "../models";
+
+export const generateXboxSanitizedAchievementEntity = (
+  xboxSanitizedAchievementEntityProps?: Partial<XboxSanitizedAchievementEntity>
+): XboxSanitizedAchievementEntity => {
+  return {
+    description: faker.random.words(8),
+    gamerscore: faker.helpers.arrayElement([5, 10, 15, 20, 25, 50, 100]),
+    id: faker.datatype.uuid(),
+    imageUrl: faker.internet.url(),
+    name: faker.random.words(4),
+    rarityPercentage: faker.datatype.number(100),
+    ...xboxSanitizedAchievementEntityProps
+  };
+};
+
+export const generateXboxDeepGameInfo = (
+  xboxDeepGameInfoProps?: Partial<XboxDeepGameInfo>,
+  options?: Partial<{ achievementCount: number }>
+): XboxDeepGameInfo => {
+  const generatedAchievements: XboxSanitizedAchievementEntity[] = [];
+
+  const achievementCount = options?.achievementCount ?? 10;
+  for (let i = 0; i < achievementCount; i += 1) {
+    generatedAchievements.push(
+      generateXboxSanitizedAchievementEntity({ id: String(i) })
+    );
+  }
+
+  return {
+    achievementsSchemaKind: faker.helpers.arrayElement(["legacy", "modern"]),
+    ...generateXboxTitleMetadata(),
+    achievements: generatedAchievements,
+    ...xboxDeepGameInfoProps
+  };
+};
+
+export const generateXboxSanitizedTitleHistoryEntity = (
+  xboxSanitizedTitleHistoryEntityProps?: Partial<XboxSanitizedTitleHistoryEntity>
+): XboxSanitizedTitleHistoryEntity => {
+  return {
+    name: faker.random.words(4),
+    titleId: faker.datatype.number(100_000),
+    titleKind: faker.helpers.arrayElement(["legacy", "modern"]),
+    totalPossibleGamerscore: faker.datatype.number(1000),
+    totalUnlockedGamerscore: faker.datatype.number(1000),
+    ...xboxSanitizedTitleHistoryEntityProps
+  };
+};
 
 export const generateXboxLegacyTitleHistoryEntity = (
   xboxLegacyTitleHistoryEntityProps?: Partial<XboxLegacyTitleHistoryEntity>
