@@ -1,4 +1,4 @@
 export interface FetchXboxTitleHistoryResponse<T> {
   titles: T[];
-  pagingInfo: { continuationToken: string; totalRecords: number };
+  pagingInfo: { continuationToken: string | null; totalRecords: number };
 }
