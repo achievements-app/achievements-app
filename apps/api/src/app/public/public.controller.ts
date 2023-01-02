@@ -16,7 +16,10 @@ import type { GamingService } from "@achievements-app/data-access-db";
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
-import type { PublicUserGameProgress } from "./models";
+import type {
+  AddTrackedAccountPayload,
+  PublicUserGameProgress
+} from "./models";
 import { PublicService } from "./public.service";
 
 @Controller("public")
@@ -29,14 +32,7 @@ export class PublicController {
   ) {}
 
   @Post("user/trackedAccount")
-  async addTrackedAccount(
-    @Body()
-    newAccount: {
-      gamingService: GamingService;
-      userName: string;
-      serviceAccountUserName: string;
-    }
-  ) {
+  async addTrackedAccount(@Body() newAccount: AddTrackedAccountPayload) {
     const foundUser = await this.dbService.db.user.findFirst({
       where: { userName: newAccount.userName }
     });

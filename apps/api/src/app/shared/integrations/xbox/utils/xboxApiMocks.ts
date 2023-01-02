@@ -12,7 +12,8 @@ import {
 } from "../models";
 
 export const generateXboxSanitizedAchievementEntity = (
-  xboxSanitizedAchievementEntityProps?: Partial<XboxSanitizedAchievementEntity>
+  xboxSanitizedAchievementEntityProps?: Partial<XboxSanitizedAchievementEntity>,
+  options?: Partial<{ isEarned: boolean }>
 ): XboxSanitizedAchievementEntity => {
   return {
     description: faker.random.words(8),
@@ -21,20 +22,38 @@ export const generateXboxSanitizedAchievementEntity = (
     imageUrl: faker.internet.url(),
     name: faker.random.words(4),
     rarityPercentage: faker.datatype.number(100),
+
+    timeUnlocked: options?.isEarned
+      ? faker.date.past(5).toISOString()
+      : undefined,
+
     ...xboxSanitizedAchievementEntityProps
   };
 };
 
 export const generateXboxDeepGameInfo = (
   xboxDeepGameInfoProps?: Partial<XboxDeepGameInfo>,
-  options?: Partial<{ achievementCount: number }>
+  options?: Partial<{
+    unearnedAchievementCount: number;
+    earnedAchievementCount: number;
+  }>
 ): XboxDeepGameInfo => {
   const generatedAchievements: XboxSanitizedAchievementEntity[] = [];
 
-  const achievementCount = options?.achievementCount ?? 10;
-  for (let i = 0; i < achievementCount; i += 1) {
+  const unearnedAchievementCount = options?.unearnedAchievementCount ?? 10;
+  for (let i = 0; i < unearnedAchievementCount; i += 1) {
     generatedAchievements.push(
       generateXboxSanitizedAchievementEntity({ id: String(i) })
+    );
+  }
+
+  const earnedAchievementCount = options?.earnedAchievementCount ?? 0;
+  for (let i = 0; i < earnedAchievementCount; i += 1) {
+    generatedAchievements.push(
+      generateXboxSanitizedAchievementEntity(
+        { id: String(i + unearnedAchievementCount - 1) },
+        { isEarned: true }
+      )
     );
   }
 

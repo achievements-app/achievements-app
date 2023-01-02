@@ -55,7 +55,7 @@ describe("Service: XboxService", () => {
       {
         titleId: mockServiceTitleIds[0]
       },
-      { achievementCount: 1 }
+      { unearnedAchievementCount: 1 }
     );
     const mockUserGames = [
       generateMappedGame({ serviceTitleId: mockServiceTitleIds[0] })
@@ -91,6 +91,54 @@ describe("Service: XboxService", () => {
     expect(addedGame.achievements[0].vanillaPoints).toEqual(
       mockServiceTitle.achievements[0].gamerscore
     );
+  });
+
+  it("can retrieve and create a new UserGameProgress entity for a given TrackedAccount", async () => {
+    // ARRANGE
+    const user = await createUser();
+    const trackedAccount = user.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "XBOX"
+    );
+
+    const mockServiceTitleIds = ["12345"];
+    const mockServiceTitle = xboxApiMocks.generateXboxDeepGameInfo(
+      {
+        titleId: mockServiceTitleIds[0]
+      },
+      { unearnedAchievementCount: 2, earnedAchievementCount: 1 }
+    );
+    const mockUserGames = [
+      generateMappedGame({ serviceTitleId: mockServiceTitleIds[0] })
+    ];
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValue(mockServiceTitle);
+
+    const xboxService = app.get(XboxService);
+
+    const addedGames = await xboxService.addXboxTitlesToDb(
+      "mockUserXuid",
+      mockServiceTitleIds,
+      mockUserGames
+    );
+
+    // ACT
+    const newUserGameProgress = await xboxService.createXboxUserGameProgress(
+      addedGames[0],
+      trackedAccount
+    );
+
+    // ASSERT
+    expect(newUserGameProgress).toBeTruthy();
+    expect(newUserGameProgress.gameId).toEqual(addedGames[0].id);
+    expect(newUserGameProgress.trackedAccountId).toEqual(trackedAccount.id);
+
+    const completeUserGameProgress = await db.userGameProgress.findFirst({
+      include: { earnedAchievements: true }
+    });
+
+    expect(completeUserGameProgress.earnedAchievements.length).toEqual(1);
   });
 
   it("given a user XUID and gamertag, can determine which of the user's games are missing and/or stored in our DB", async () => {
