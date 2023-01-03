@@ -51,7 +51,7 @@ export const generateXboxDeepGameInfo = (
   for (let i = 0; i < earnedAchievementCount; i += 1) {
     generatedAchievements.push(
       generateXboxSanitizedAchievementEntity(
-        { id: String(i + unearnedAchievementCount - 1) },
+        { id: String(i + unearnedAchievementCount) },
         { isEarned: true }
       )
     );

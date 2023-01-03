@@ -2,7 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
-import { db, TrackedAccount } from "@achievements-app/data-access-db";
+import { db } from "@achievements-app/data-access-db";
 import { createUser } from "@achievements-app/utils-db";
 
 import { DbService } from "@/api/shared/db/db.service";
