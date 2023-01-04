@@ -139,7 +139,7 @@ describe("Service: XboxService", () => {
     expect(completeUserGameProgress.earnedAchievements.length).toEqual(1);
   });
 
-  xit("given a list of serviceTitleIds, fetches the games from Xbox and updates them in our DB", async () => {
+  it("given a list of serviceTitleIds, fetches the games from Xbox and updates them in our DB", async () => {
     // ARRANGE
     const storedGame = await createGame({
       gamingService: "XBOX",
