@@ -3,10 +3,7 @@ import { Test } from "@nestjs/testing";
 
 import { db } from "@achievements-app/data-access-db";
 import { createGame, createUser } from "@achievements-app/utils-db";
-import {
-  generateMappedCompleteGame,
-  generateMappedGame
-} from "@achievements-app/utils-model-generators";
+import { generateMappedGame } from "@achievements-app/utils-model-generators";
 
 import { DbService } from "@/api/shared/db/db.service";
 
@@ -126,6 +123,119 @@ describe("Service: PsnService", () => {
     expect(newUserGameProgress.trackedAccountId).toEqual(trackedAccount.id);
     expect(newUserGameProgress.gameId).toEqual(addedGame.id);
     expect(newUserGameProgress.earnedAchievements.length).toEqual(2);
+  });
+
+  it("given a TrackedAccount and list of MappedGame entities, can determine which games need a progress update for the TrackedAccount", async () => {
+    // ARRANGE
+    // First, add the game and some initial user progress to our DB.
+    const addedUser = await createUser();
+    const trackedAccount = addedUser.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "PSN"
+    );
+
+    const mockMappedGame = generateMappedGame({
+      gamingService: "PSN",
+      psnServiceName: "trophy"
+    });
+
+    // We're not going to add this game to the DB.
+    const mockUnknownMappedGame = generateMappedGame({
+      gamingService: "PSN",
+      psnServiceName: "trophy"
+    });
+
+    jest
+      .spyOn(dataService, "fetchAllTitleTrophies")
+      .mockResolvedValueOnce(psnApiMocks.generateTitleTrophiesResponse());
+
+    jest
+      .spyOn(dataService, "fetchUserEarnedTrophiesForTitle")
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse(undefined, {
+          earnedTrophyCount: 2,
+          unearnedTrophyCount: 1
+        })
+      )
+      // The 2nd call will show all three trophies as earned.
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse(undefined, {
+          earnedTrophyCount: 3,
+          unearnedTrophyCount: 0
+        })
+      );
+
+    const psnService = app.get(PsnService);
+
+    await psnService.addPsnTitleAndProgressToDb(trackedAccount, mockMappedGame);
+
+    // ACT
+    const serviceTitleIdsNeedingUpdate =
+      await psnService.getPsnTitleIdsNeedingUserProgressUpdate(trackedAccount, [
+        mockMappedGame,
+        mockUnknownMappedGame
+      ]);
+
+    // ASSERT
+    expect(serviceTitleIdsNeedingUpdate).toEqual([
+      mockMappedGame.serviceTitleId
+    ]);
+  });
+
+  it("given a TrackedAccount and a target MappedGame entity, can update the title and stored user progress for the game", async () => {
+    // ARRANGE
+    // First, add the game and some initial user progress to our DB.
+    const addedUser = await createUser();
+    const trackedAccount = addedUser.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "PSN"
+    );
+
+    const mockMappedGame = generateMappedGame({
+      gamingService: "PSN",
+      psnServiceName: "trophy"
+    });
+
+    jest
+      .spyOn(dataService, "fetchAllTitleTrophies")
+      .mockResolvedValue(psnApiMocks.generateTitleTrophiesResponse());
+
+    jest
+      .spyOn(dataService, "fetchUserEarnedTrophiesForTitle")
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse(undefined, {
+          earnedTrophyCount: 2,
+          unearnedTrophyCount: 1
+        })
+      ) // The 2nd call will show all three trophies as earned.
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse(undefined, {
+          earnedTrophyCount: 3,
+          unearnedTrophyCount: 0
+        })
+      );
+
+    const psnService = app.get(PsnService);
+
+    await psnService.addPsnTitleAndProgressToDb(trackedAccount, mockMappedGame);
+
+    // I don't like having an assertion in the ARRANGE block, but this does
+    // a lot to raise my confidence level in this particular test.
+    const foundInitialUserGameProgress = await db.userGameProgress.findFirst({
+      include: { earnedAchievements: true }
+    });
+    expect(foundInitialUserGameProgress.earnedAchievements.length).toEqual(2);
+
+    // ACT
+    await psnService.updatePsnTitleAndProgressInDb(
+      trackedAccount,
+      mockMappedGame
+    );
+
+    // ASSERT
+    const foundUpdatedUserGameProgress = await db.userGameProgress.findFirst({
+      include: { earnedAchievements: true }
+    });
+
+    expect(foundUpdatedUserGameProgress.earnedAchievements.length).toEqual(3);
   });
 
   it("given a TrackedAccount does not have a stored PSN account ID, retrieves the account ID from PSN and stores it", async () => {
