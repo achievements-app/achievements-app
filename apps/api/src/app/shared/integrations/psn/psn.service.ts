@@ -57,6 +57,8 @@ export class PsnService {
     this.#logger.log(
       `Added title as ${addedGame.id} and progress as ${newUserGameProgress.id} to DB for PSN:${trackedAccount.accountUserName}:${targetUserGame.name}`
     );
+
+    return { addedGame, newUserGameProgress };
   }
 
   async getMissingAndPresentUserPsnGames(

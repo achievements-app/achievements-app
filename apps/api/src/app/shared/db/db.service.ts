@@ -90,6 +90,7 @@ export class DbService implements OnModuleInit {
     );
 
     const newUserGameProgress = await this.db.userGameProgress.create({
+      include: { earnedAchievements: true },
       data: {
         gameId: storedGameId,
         trackedAccountId: trackedAccount.id,

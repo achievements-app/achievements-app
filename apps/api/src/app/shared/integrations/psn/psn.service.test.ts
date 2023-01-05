@@ -83,6 +83,51 @@ describe("Service: PsnService", () => {
     expect(missingGameServiceTitleIds.length).toEqual(2);
   });
 
+  it("given a TrackedAccount and MappedGame entity, can find the game metadata and user progress and store it in our DB", async () => {
+    // ARRANGE
+    const addedUser = await createUser();
+    const trackedAccount = addedUser.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "PSN"
+    );
+
+    const mockMappedGame = generateMappedGame({
+      gamingService: "PSN",
+      psnServiceName: "trophy"
+    });
+
+    jest
+      .spyOn(dataService, "fetchAllTitleTrophies")
+      .mockResolvedValueOnce(psnApiMocks.generateTitleTrophiesResponse());
+
+    jest
+      .spyOn(dataService, "fetchUserEarnedTrophiesForTitle")
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse(undefined, {
+          earnedTrophyCount: 2,
+          unearnedTrophyCount: 1
+        })
+      );
+
+    const psnService = app.get(PsnService);
+
+    // ACT
+    const { addedGame, newUserGameProgress } =
+      await psnService.addPsnTitleAndProgressToDb(
+        trackedAccount,
+        mockMappedGame
+      );
+
+    // ASSERT
+    expect(addedGame.serviceTitleId).toEqual(mockMappedGame.serviceTitleId);
+    expect(addedGame.gamingService).toEqual("PSN");
+    expect(addedGame.name).toEqual(mockMappedGame.name);
+    expect(addedGame.psnServiceName).toEqual(mockMappedGame.psnServiceName);
+
+    expect(newUserGameProgress.trackedAccountId).toEqual(trackedAccount.id);
+    expect(newUserGameProgress.gameId).toEqual(addedGame.id);
+    expect(newUserGameProgress.earnedAchievements.length).toEqual(2);
+  });
+
   it("given a TrackedAccount does not have a stored PSN account ID, retrieves the account ID from PSN and stores it", async () => {
     // ARRANGE
     const user = await createUser();

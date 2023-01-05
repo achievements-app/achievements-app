@@ -1,10 +1,53 @@
 import { faker } from "@faker-js/faker";
 import type {
+  TitleThinTrophy,
+  TitleTrophiesResponse,
   TrophyTitle,
   UserThinTrophy,
   UserTitlesResponse,
   UserTrophiesEarnedForTitleResponse
 } from "psn-api";
+
+export const generateTitleThinTrophy = (
+  titleThinTrophyProps?: Partial<TitleThinTrophy>
+): TitleThinTrophy => {
+  return {
+    trophyId: faker.datatype.number(1000),
+    trophyHidden: faker.datatype.boolean(),
+    trophyType: faker.helpers.arrayElement([
+      "bronze",
+      "silver",
+      "gold",
+      "platinum"
+    ]),
+    trophyName: faker.random.words(4),
+    trophyDetail: faker.random.words(9),
+    trophyIconUrl: faker.internet.url(),
+    trophyGroupId: faker.helpers.arrayElement([
+      "default",
+      "one",
+      "two",
+      "three"
+    ]),
+    ...titleThinTrophyProps
+  };
+};
+
+export const generateTitleTrophiesResponse = (
+  titleTrophiesResponseProps?: Partial<TitleTrophiesResponse>
+): TitleTrophiesResponse => {
+  return {
+    trophySetVersion: "1",
+    hasTrophyGroups: faker.datatype.boolean(),
+    trophies: [
+      generateTitleThinTrophy({ trophyId: 0 }),
+      generateTitleThinTrophy({ trophyId: 1 }),
+      generateTitleThinTrophy({ trophyId: 2 })
+    ],
+    totalItemCount: 3,
+    ...titleTrophiesResponseProps
+  };
+};
 
 export const generateTrophyTitle = (
   trophyTitleProps?: Partial<TrophyTitle>
