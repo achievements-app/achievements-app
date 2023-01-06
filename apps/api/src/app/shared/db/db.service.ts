@@ -234,16 +234,21 @@ export class DbService implements OnModuleInit {
     return allUserGameProgress;
   }
 
-  // TODO: We can trim this down to optimize bandwidth usage.
   async findAllTrackedAccountUserGameProgressByGameIds(
     trackedAccountId: string,
     gameIds: string[]
   ) {
     return await this.db.userGameProgress.findMany({
       where: { trackedAccountId, gameId: { in: gameIds } },
-      include: {
-        game: true,
-        earnedAchievements: { include: { achievement: true } }
+      select: {
+        game: {
+          select: { serviceTitleId: true }
+        },
+        earnedAchievements: {
+          select: {
+            achievement: { select: { vanillaPoints: true } }
+          }
+        }
       }
     });
   }
