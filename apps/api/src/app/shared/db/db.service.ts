@@ -145,6 +145,10 @@ export class DbService implements OnModuleInit {
     return await this.db.gameAchievement.findMany({
       where: {
         gameId: storedGameId
+      },
+      select: {
+        id: true,
+        serviceAchievementId: true
       }
     });
   }
@@ -253,7 +257,7 @@ export class DbService implements OnModuleInit {
     });
   }
 
-  async findCompleteUserGameProgress(
+  async findThinUserGameProgress(
     trackedAccountId: string,
     storedGameId: string
   ) {
@@ -264,15 +268,55 @@ export class DbService implements OnModuleInit {
           gameId: storedGameId
         }
       },
-      include: {
-        game: true,
-        earnedAchievements: { include: { achievement: true } }
+      select: {
+        id: true,
+        gameId: true,
+        trackedAccountId: true,
+        _count: { select: { earnedAchievements: true } }
       }
     });
   }
 
+  async findThinUserGameProgressWithVanillaPoints(
+    trackedAccountId: string,
+    storedGameId: string
+  ) {
+    return await this.db.userGameProgress.findUnique({
+      where: {
+        trackedAccountId_gameId: {
+          trackedAccountId,
+          gameId: storedGameId
+        }
+      },
+      select: {
+        id: true,
+        gameId: true,
+        trackedAccountId: true,
+        earnedAchievements: {
+          select: { achievement: { select: { vanillaPoints: true } } }
+        }
+      }
+    });
+  }
+
+  async findDoesGameExistByServiceTitleId(serviceTitleId: string) {
+    const foundGameCount = await this.db.game.count({
+      where: { serviceTitleId }
+    });
+
+    return foundGameCount > 0;
+  }
+
   async findGameByServiceTitleId(serviceTitleId: string) {
-    return await this.db.game.findFirst({ where: { serviceTitleId } });
+    return await this.db.game.findFirst({
+      where: { serviceTitleId },
+      select: {
+        id: true,
+        name: true,
+        serviceTitleId: true,
+        xboxAchievementsSchemaKind: true
+      }
+    });
   }
 
   async findMultipleGamesByServiceTitleIds(
@@ -280,7 +324,11 @@ export class DbService implements OnModuleInit {
     gamingService?: GamingService
   ) {
     return await this.db.game.findMany({
-      where: { gamingService, serviceTitleId: { in: serviceTitleIds } }
+      where: { gamingService, serviceTitleId: { in: serviceTitleIds } },
+      select: {
+        id: true,
+        serviceTitleId: true
+      }
     });
   }
 
@@ -363,7 +411,10 @@ export class DbService implements OnModuleInit {
   }
 
   async updateExistingUserGameProgress(
-    existingUserGameProgress: UserGameProgress,
+    existingUserGameProgress: Pick<
+      UserGameProgress,
+      "id" | "gameId" | "trackedAccountId"
+    >,
     allEarnedAchievements: MappedGameAchievement[]
   ) {
     const allGameStoredAchievements = await this.findAllStoredGameAchievements(
@@ -395,11 +446,10 @@ export class DbService implements OnModuleInit {
 
     // Purge the list of achievements associated with the UserGameProgress entity.
     // It's easier and faster to do this than try to filter by what's already unlocked.
-    await this.#cleanUserGameProgress(existingUserGameProgress);
+    await this.#cleanUserGameProgress(existingUserGameProgress.id);
 
     const updatedUserGameProgress = await this.db.userGameProgress.update({
       where: { id: existingUserGameProgress.id },
-      include: { earnedAchievements: true },
       data: {
         earnedAchievements: {
           createMany: {
@@ -418,7 +468,8 @@ export class DbService implements OnModuleInit {
             })
           }
         }
-      }
+      },
+      select: { id: true }
     });
 
     this.#logger.log(
@@ -453,7 +504,8 @@ export class DbService implements OnModuleInit {
         xboxAchievementsSchemaKind:
           mappedCompleteGame.xboxAchievementsSchemaKind,
         psnServiceName: mappedCompleteGame.psnServiceName
-      }
+      },
+      select: { id: true, name: true, serviceTitleId: true }
     });
 
     // Create any missing achievements.
@@ -469,7 +521,8 @@ export class DbService implements OnModuleInit {
 
     // Update all existing achievements.
     const allGameStoredAchievements = await this.db.gameAchievement.findMany({
-      where: { gameId: updatedGame.id }
+      where: { gameId: updatedGame.id },
+      select: { id: true, serviceAchievementId: true }
     });
 
     const batchUpdateTransaction: PrismaPromise<unknown>[] = [];
@@ -491,7 +544,8 @@ export class DbService implements OnModuleInit {
             sourceImageUrl: foundGameAchievement.sourceImageUrl,
             knownEarnerCount: foundGameAchievement.knownEarnerCount ?? 0,
             knownEarnerPercentage: foundGameAchievement.knownEarnerPercentage
-          }
+          },
+          select: { id: true }
         })
       );
     }
@@ -509,10 +563,10 @@ export class DbService implements OnModuleInit {
    * Given a UserGameProgress entity, wipe all UserEarnedAchievement
    * entities that are associated with it.
    */
-  async #cleanUserGameProgress(userGameProgress: UserGameProgress) {
+  async #cleanUserGameProgress(userGameProgressId: string) {
     return await this.db.userEarnedAchievement.deleteMany({
       where: {
-        gameProgressEntityId: userGameProgress.id
+        gameProgressEntityId: userGameProgressId
       }
     });
   }
@@ -524,7 +578,10 @@ export class DbService implements OnModuleInit {
    * the game (or achievement set) has been published.
    */
   #getIsMissingUserGameProgressAchievement(
-    targetGameStoredAchievements: GameAchievement[],
+    targetGameStoredAchievements: Pick<
+      GameAchievement,
+      "serviceAchievementId"
+    >[],
     reportedEarnedAchievements: MappedGameAchievement[]
   ) {
     const storedEarnedAchievements = targetGameStoredAchievements.filter(

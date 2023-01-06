@@ -86,11 +86,10 @@ export class SyncProcessor extends BaseProcessor {
   ) {
     // We'll either be updating an existing userGameProgress
     // entity or creating an entirely new one.
-    const foundUserGameProgress =
-      await this.dbService.findCompleteUserGameProgress(
-        job.data.trackedAccount.id,
-        job.data.storedGameId
-      );
+    const foundUserGameProgress = await this.dbService.findThinUserGameProgress(
+      job.data.trackedAccount.id,
+      job.data.storedGameId
+    );
 
     // If a UserGameProgress entity doesn't exist, we have to
     // create a new one before doing anything else.
@@ -105,7 +104,7 @@ export class SyncProcessor extends BaseProcessor {
         job.data.serviceTitleId
       );
     } else if (
-      foundUserGameProgress.earnedAchievements.length !==
+      foundUserGameProgress?._count?.earnedAchievements !==
       job.data.serviceReportedEarnedAchievementCount
     ) {
       this.logger.log(
@@ -113,7 +112,7 @@ export class SyncProcessor extends BaseProcessor {
           job.data.storedGameId
         }. Missing ${
           job.data.serviceReportedEarnedAchievementCount -
-          foundUserGameProgress.earnedAchievements.length
+          foundUserGameProgress?._count?.earnedAchievements
         } reported earned achievements.`
       );
 
@@ -136,7 +135,7 @@ export class SyncProcessor extends BaseProcessor {
     // We'll either be updating an existing userGameProgress
     // entity or creating an entirely new one.
     const foundUserGameProgress =
-      await this.dbService.findCompleteUserGameProgress(
+      await this.dbService.findThinUserGameProgressWithVanillaPoints(
         job.data.trackedAccount.id,
         job.data.storedGameId
       );

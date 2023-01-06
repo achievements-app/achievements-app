@@ -128,7 +128,7 @@ export class RetroachievementsService {
   }
 
   async updateRetroachievementsTitlesInDb(targetServiceTitleIds: string[]) {
-    const updatedGames: Game[] = [];
+    const updatedGames: Pick<Game, "id" | "name" | "serviceTitleId">[] = [];
 
     this.#logger.log(
       `Need to update ${targetServiceTitleIds.length} RA titles`
@@ -155,7 +155,10 @@ export class RetroachievementsService {
   }
 
   async updateRetroachievementsUserGameProgress(
-    existingUserGameProgress: UserGameProgress,
+    existingUserGameProgress: Pick<
+      UserGameProgress,
+      "id" | "gameId" | "trackedAccountId"
+    >,
     storedGameId: string,
     trackedAccount: TrackedAccount,
     serviceTitleId: string

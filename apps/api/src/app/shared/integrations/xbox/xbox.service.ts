@@ -67,7 +67,10 @@ export class XboxService {
   }
 
   async createXboxUserGameProgress(
-    storedGame: Game,
+    storedGame: Pick<
+      Game,
+      "id" | "serviceTitleId" | "xboxAchievementsSchemaKind"
+    >,
     trackedAccount: TrackedAccount
   ) {
     this.#logger.log(
@@ -136,7 +139,7 @@ export class XboxService {
     targetServiceTitleIds: string[],
     allUserGames: MappedGame[]
   ) {
-    const updatedGames: Game[] = [];
+    const updatedGames: Pick<Game, "id" | "name" | "serviceTitleId">[] = [];
 
     const targetUserGames = allUserGames.filter((userGame) =>
       targetServiceTitleIds.includes(userGame.serviceTitleId)
@@ -168,8 +171,14 @@ export class XboxService {
   }
 
   async updateXboxUserGameProgress(
-    existingUserGameProgress: UserGameProgress,
-    storedGame: Game,
+    existingUserGameProgress: Pick<
+      UserGameProgress,
+      "id" | "gameId" | "trackedAccountId"
+    >,
+    storedGame: Pick<
+      Game,
+      "id" | "name" | "serviceTitleId" | "xboxAchievementsSchemaKind"
+    >,
     trackedAccount: TrackedAccount
   ) {
     this.#logger.log(

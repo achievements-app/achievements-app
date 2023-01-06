@@ -112,9 +112,10 @@ export class PsnService {
       );
 
     for (const userReportedGame of userReportedGames) {
-      const doesGameExist = await this.dbService.findGameByServiceTitleId(
-        userReportedGame.serviceTitleId
-      );
+      const doesGameExist =
+        await this.dbService.findDoesGameExistByServiceTitleId(
+          userReportedGame.serviceTitleId
+        );
 
       const foundUserGameProgress = allPsnUserGameProgress.find(
         (userGameProgress) =>
@@ -172,7 +173,7 @@ export class PsnService {
     );
 
     const existingUserGameProgress =
-      await this.dbService.findCompleteUserGameProgress(
+      await this.dbService.findThinUserGameProgress(
         trackedAccount.id,
         updatedGame.id
       );
@@ -191,7 +192,7 @@ export class PsnService {
     } else {
       const reportedEarnedAchievementsCount = earnedAchievements.length;
       const storedEarnedAchievementsCount =
-        existingUserGameProgress?.earnedAchievements?.length ?? 0;
+        existingUserGameProgress?._count?.earnedAchievements ?? 0;
 
       this.#logger.log(
         `${trackedAccount.gamingService}:${trackedAccount.accountUserName} has earned ${reportedEarnedAchievementsCount} achievements for ${updatedGame.name}. We are currently storing ${storedEarnedAchievementsCount}`

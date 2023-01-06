@@ -197,11 +197,15 @@ describe("Service: DbService", () => {
       );
 
       // ACT
-      const completeUserGameProgress =
-        await dbService.findCompleteUserGameProgress(
-          neededTrackedAccount.id,
-          storedGame.id
-        );
+      const thinUserGameProgress = await dbService.findThinUserGameProgress(
+        neededTrackedAccount.id,
+        storedGame.id
+      );
+
+      const completeUserGameProgress = await db.userGameProgress.findFirst({
+        where: { id: thinUserGameProgress.id },
+        include: { earnedAchievements: true }
+      });
 
       // ASSERT
       expect(completeUserGameProgress).toBeTruthy();
@@ -360,8 +364,13 @@ describe("Service: DbService", () => {
           mockServiceEarnedAchievements
         );
 
+      const completeUserGameProgress = await db.userGameProgress.findFirst({
+        where: { id: updatedUserGameProgress.id },
+        include: { earnedAchievements: true }
+      });
+
       // ASSERT
-      expect(updatedUserGameProgress.earnedAchievements.length).toEqual(3);
+      expect(completeUserGameProgress.earnedAchievements.length).toEqual(3);
     });
 
     it("given a reported achievement is missing from our DB for a game, throws an error", async () => {

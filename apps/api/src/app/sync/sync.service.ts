@@ -172,7 +172,7 @@ export class SyncService {
 
   async #getAllXboxGamesRequiringProgressSync(
     trackedAccount: TrackedAccount,
-    storedGames: Game[],
+    storedGames: Pick<Game, "id" | "serviceTitleId">[],
     serviceUserGames: MappedGame[]
   ) {
     const allAccountUserGameProgresses =
@@ -221,7 +221,7 @@ export class SyncService {
 
   async #getAllRetroachievementsGamesRequiringProgressSync(
     trackedAccount: TrackedAccount,
-    storedGames: Game[],
+    storedGames: Pick<Game, "id" | "serviceTitleId">[],
     serviceUserGames: MappedGame[]
   ) {
     const allAccountUserGameProgresses =
