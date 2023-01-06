@@ -106,7 +106,7 @@ export class PsnService {
     const serviceTitleIdsNeedingUpdate: string[] = [];
 
     const allPsnUserGameProgress =
-      await this.dbService.findAllCompleteUserGameProgressByGamingService(
+      await this.dbService.findAllThinUserGameProgressByGamingService(
         trackedAccount.id,
         "PSN"
       );
@@ -124,10 +124,10 @@ export class PsnService {
 
       const isMissingUserGameProgress =
         !foundUserGameProgress ||
-        foundUserGameProgress?.earnedAchievements?.length === undefined;
+        foundUserGameProgress?._count?.earnedAchievements === undefined;
 
       const isAchievementCountMismatched =
-        foundUserGameProgress?.earnedAchievements?.length !==
+        foundUserGameProgress?._count?.earnedAchievements !==
         userReportedGame?.knownUserEarnedAchievementCount;
 
       if (
@@ -135,7 +135,7 @@ export class PsnService {
         (isMissingUserGameProgress || isAchievementCountMismatched)
       ) {
         const storedEarnedAchievementCount =
-          foundUserGameProgress?.earnedAchievements?.length ?? 0;
+          foundUserGameProgress?._count?.earnedAchievements ?? 0;
         const reportedEarnedAchievementCount =
           userReportedGame?.knownUserEarnedAchievementCount ?? 0;
 

@@ -120,9 +120,14 @@ describe("Service: PsnService", () => {
     expect(addedGame.name).toEqual(mockMappedGame.name);
     expect(addedGame.psnServiceName).toEqual(mockMappedGame.psnServiceName);
 
-    expect(newUserGameProgress.trackedAccountId).toEqual(trackedAccount.id);
-    expect(newUserGameProgress.gameId).toEqual(addedGame.id);
-    expect(newUserGameProgress.earnedAchievements.length).toEqual(2);
+    const foundUserGameProgress = await db.userGameProgress.findFirst({
+      where: { id: newUserGameProgress.id },
+      include: { earnedAchievements: true }
+    });
+
+    expect(foundUserGameProgress.trackedAccountId).toEqual(trackedAccount.id);
+    expect(foundUserGameProgress.gameId).toEqual(addedGame.id);
+    expect(foundUserGameProgress.earnedAchievements.length).toEqual(2);
   });
 
   it("given a TrackedAccount and list of MappedGame entities, can determine which games need a progress update for the TrackedAccount", async () => {

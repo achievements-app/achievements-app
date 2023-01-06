@@ -90,7 +90,6 @@ export class DbService implements OnModuleInit {
     );
 
     const newUserGameProgress = await this.db.userGameProgress.create({
-      include: { earnedAchievements: true },
       data: {
         gameId: storedGameId,
         trackedAccountId: trackedAccount.id,
@@ -150,6 +149,39 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  async findAllThinUserGameProgressByGamingService(
+    trackedAccountId: string,
+    gamingService: GamingService
+  ) {
+    this.#logger.log(
+      `Finding all thin UserGameProgress entities for ${trackedAccountId}`
+    );
+
+    const allThinUserGameProgresses = await this.db.userGameProgress.findMany({
+      where: { trackedAccountId, game: { gamingService } },
+      select: {
+        game: {
+          select: { serviceTitleId: true }
+        },
+        _count: {
+          select: {
+            earnedAchievements: true
+          }
+        }
+      }
+    });
+
+    this.#logger.log(
+      `Found ${allThinUserGameProgresses.length} thin UserGameProgress entities for ${trackedAccountId}`
+    );
+
+    return allThinUserGameProgresses;
+  }
+
+  /**
+   * WARNING: This call uses a lot of bandwidth! Use sparingly, and
+   * never on a scheduled job if it can be avoided.
+   */
   async findAllCompleteUserGameProgress(
     trackedAccountId: string
   ): Promise<CompleteUserGameProgress[]> {
@@ -175,6 +207,10 @@ export class DbService implements OnModuleInit {
     return allCompleteUserGameProgresses;
   }
 
+  /**
+   * WARNING: This call uses a lot of bandwidth! Use sparingly, and
+   * never on a scheduled job if it can be avoided.
+   */
   async findAllCompleteUserGameProgressByGamingService(
     trackedAccountId: string,
     gamingService: GamingService
@@ -198,6 +234,7 @@ export class DbService implements OnModuleInit {
     return allUserGameProgress;
   }
 
+  // TODO: We can trim this down to optimize bandwidth usage.
   async findAllTrackedAccountUserGameProgressByGameIds(
     trackedAccountId: string,
     gameIds: string[]
@@ -261,6 +298,11 @@ export class DbService implements OnModuleInit {
     serviceTitleIds: string[]
   ) {
     const foundGames = await this.db.game.findMany({
+      select: {
+        isStale: true,
+        serviceTitleId: true,
+        name: true
+      },
       where: {
         gamingService,
         serviceTitleId: {
