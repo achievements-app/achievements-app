@@ -25,17 +25,18 @@ export class SyncService {
   ) {}
 
   async queueSyncUserProgressJobsForRetroachievementsGames(
-    serviceTitleIds: string[],
+    serviceTitleIdsToSync: string[],
     userGames: MappedGame[],
     trackedAccount: TrackedAccount
   ) {
     // We first want to get the list of all titles needing a progress sync.
     const allTargetStoredGames =
       await this.dbService.findMultipleGamesByServiceTitleIds(
-        serviceTitleIds,
+        serviceTitleIdsToSync,
         "RA"
       );
 
+    // Now, check which titles actually need work done.
     const allServiceTitleIdsNeedingSync =
       await this.#getAllRetroachievementsGamesRequiringProgressSync(
         trackedAccount,

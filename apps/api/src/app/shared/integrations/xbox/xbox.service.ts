@@ -220,8 +220,9 @@ export class XboxService {
       );
       await this.dbService.markGameAsStale(storedGame.id);
 
-      // FIXME: Update the game before continuing on. Without an update
-      // to the game, `updateExistingUserGameProgress()` will fail.
+      // We have to break here. If the game is stale, attempting to
+      // update the user progress will most certainly fail.
+      return;
     }
 
     await this.dbService.updateExistingUserGameProgress(
