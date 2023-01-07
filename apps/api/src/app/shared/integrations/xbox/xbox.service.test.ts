@@ -1,7 +1,7 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import * as XboxLiveAuthModule from "@xboxreplay/xboxlive-auth";
 
 import { db } from "@achievements-app/data-access-db";
 import { createGame, createUser } from "@achievements-app/utils-db";
@@ -18,6 +18,14 @@ import { XboxDataService } from "./xbox-data.service";
 describe("Service: XboxService", () => {
   let app: INestApplication;
   let dataService: XboxDataService;
+
+  jest.spyOn(XboxLiveAuthModule, "authenticate").mockResolvedValue({
+    xuid: "authXuid",
+    user_hash: "authUserHash",
+    xsts_token: "authXstsToken",
+    display_claims: {},
+    expires_on: "mockExpiresOn"
+  });
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({

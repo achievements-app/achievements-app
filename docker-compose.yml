@@ -3,11 +3,34 @@ version: "3.9"
 services:
   db:
     image: postgres:13
-    restart: always
-    container_name: integration-tests-db
+    volumes:
+      - data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminadmin
+      POSTGRES_DB: achievementsapp
     ports:
-      - "5433:5432"
+      - "5432:5432"
+
+  test_db:
+    image: postgres:13
+    volumes:
+      - testdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5433"
     environment:
       POSTGRES_USER: prisma
       POSTGRES_PASSWORD: prisma
       POSTGRES_DB: tests
+    command: -p 5433
+
+  redis:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    hostname: redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  data:
+  testdata:

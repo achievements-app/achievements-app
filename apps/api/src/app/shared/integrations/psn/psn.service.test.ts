@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import * as PsnApiModule from "psn-api";
 
 import { db } from "@achievements-app/data-access-db";
 import { createGame, createUser } from "@achievements-app/utils-db";
@@ -15,6 +16,22 @@ import * as psnApiMocks from "./utils/psnApiMocks";
 describe("Service: PsnService", () => {
   let app: INestApplication;
   let dataService: PsnDataService;
+
+  jest
+    .spyOn(PsnApiModule, "exchangeNpssoForCode")
+    .mockResolvedValue("mockAccessCode");
+
+  jest.spyOn(PsnApiModule, "exchangeCodeForAccessToken").mockResolvedValue({
+    accessToken: "mockAccessToken",
+    expiresIn: 100_000,
+    refreshToken: "mockRefreshToken",
+    refreshTokenExpiresIn: 300_000,
+    idToken: "mockIdToken",
+    scope: "mockScope",
+    tokenType: "mockTokenType"
+  });
+
+  jest.spyOn(PsnApiModule, "exchangeRefreshTokenForAuthTokens");
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({

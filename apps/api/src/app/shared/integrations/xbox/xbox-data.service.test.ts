@@ -16,6 +16,14 @@ import { XboxDataService } from "./xbox-data.service";
 describe("Service: XboxDataService", () => {
   let app: INestApplication;
 
+  jest.spyOn(XboxLiveAuthModule, "authenticate").mockResolvedValue({
+    xuid: "authXuid",
+    user_hash: "authUserHash",
+    xsts_token: "authXstsToken",
+    display_claims: {},
+    expires_on: "mockExpiresOn"
+  });
+
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [XboxModule]

@@ -44,22 +44,13 @@ describe("Service: PsnAuthService", () => {
       get: jest.fn()
     }));
 
-    const moduleRef = await Test.createTestingModule({
-      imports: [PsnModule]
-    }).compile();
-
-    app = moduleRef.createNestApplication();
-    await app.init();
-
-    const psnAuthService = app.get(PsnAuthService);
-
     jest
       .spyOn(PsnApiModule, "exchangeNpssoForCode")
-      .mockResolvedValueOnce("mockAccessCode");
+      .mockResolvedValue("mockAccessCode");
 
     const exchangeCodeForAccessTokenSpy = jest
       .spyOn(PsnApiModule, "exchangeCodeForAccessToken")
-      .mockResolvedValueOnce({
+      .mockResolvedValue({
         accessToken: "mockAccessToken",
         expiresIn: 100_000,
         refreshToken: "mockRefreshToken",
@@ -69,17 +60,21 @@ describe("Service: PsnAuthService", () => {
         tokenType: "mockTokenType"
       });
 
+    const moduleRef = await Test.createTestingModule({
+      imports: [PsnModule]
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    await app.init();
+
     const exchangeRefreshTokenForAuthTokensSpy = jest.spyOn(
       PsnApiModule,
       "exchangeRefreshTokenForAuthTokens"
     );
 
-    // ACT
-    await psnAuthService.onModuleInit();
-
     // ASSERT
     expect(exchangeCodeForAccessTokenSpy).toHaveBeenCalledTimes(1);
-    expect(mockSet).toHaveBeenCalled();
+    expect(mockSet).toHaveBeenCalledTimes(1);
 
     expect(exchangeRefreshTokenForAuthTokensSpy).not.toHaveBeenCalled();
   });

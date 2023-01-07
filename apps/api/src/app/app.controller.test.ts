@@ -2,17 +2,14 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
-import { DbService } from "@/api/shared/db/db.service";
-
 import { AppController } from "./app.controller";
-import { AppModule } from "./app.module";
 
 describe("Controller: AppController", () => {
   let app: INestApplication;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule]
+      controllers: [AppController]
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -20,9 +17,6 @@ describe("Controller: AppController", () => {
   });
 
   afterAll(async () => {
-    const dbService = app.get(DbService);
-    await dbService.enableShutdownHooks(app);
-
     await app.close();
   });
 
