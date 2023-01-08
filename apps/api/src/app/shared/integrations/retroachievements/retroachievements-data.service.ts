@@ -38,11 +38,39 @@ export class RetroachievementsDataService {
   async fetchDeepGameInfo(serviceTitleId: number | string) {
     const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 
-    await clientInstance.limiter.removeTokens(1);
+    await clientInstance.limiter.removeTokens(2);
 
-    return clientInstance.client.getExtendedGameInfoByGameId(
-      Number(serviceTitleId)
+    const [extendedGameInfo, earningDistributions] = await Promise.all([
+      clientInstance.client.getExtendedGameInfoByGameId(Number(serviceTitleId)),
+      clientInstance.client.getAchievementDistributionForGameId(
+        Number(serviceTitleId),
+        true
+      )
+    ]);
+
+    const titleCompletionRate = this.#calculateTitleCompletionRate(
+      earningDistributions,
+      extendedGameInfo.numDistinctPlayersHardcore
     );
+
+    return {
+      ...extendedGameInfo,
+      titleCompletionRate
+    };
+  }
+
+  #calculateTitleCompletionRate(
+    earningDistributions: Record<string, number>,
+    knownPlayerCount: number
+  ) {
+    const distributions = Object.entries(earningDistributions);
+    if (distributions.length === 0) {
+      return null;
+    }
+
+    const [, numberOfCompletionists] = distributions[distributions.length - 1];
+
+    return numberOfCompletionists / knownPlayerCount;
   }
 
   // We use a very naive load balancing strategy here.

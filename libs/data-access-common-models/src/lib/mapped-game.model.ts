@@ -10,6 +10,7 @@ type MappedGameOptionalProps = Partial<
     Game,
     | "coverImageUrl"
     | "gamePlatforms"
+    | "knownCompletionistRate"
     | "knownPlayerCount"
     | "xboxAchievementsSchemaKind"
     | "psnServiceName"

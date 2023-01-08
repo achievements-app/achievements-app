@@ -5,13 +5,14 @@ import type { MappedCompleteGame } from "@achievements-app/data-access-common-mo
 import { mapAchievementToMappedGameAchievement } from "./mapAchievementToMappedGameAchievement";
 
 export const mapGameInfoExtendedToCompleteGame = (
-  gameInfoExtended: GameInfoExtended
+  gameInfoExtended: GameInfoExtended & { titleCompletionRate: number | null }
 ): MappedCompleteGame => {
   return {
     name: gameInfoExtended.title as string,
     gamePlatforms: [gameInfoExtended.consoleName as string],
     gamingService: "RA",
     serviceTitleId: String(gameInfoExtended.id as number),
+    knownCompletionistRate: gameInfoExtended.titleCompletionRate ?? undefined,
     knownPlayerCount: gameInfoExtended.numDistinctPlayersHardcore,
     coverImageUrl: gameInfoExtended.imageIcon
       ? `https://retroachievements.org${gameInfoExtended.imageIcon}`

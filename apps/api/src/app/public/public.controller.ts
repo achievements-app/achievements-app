@@ -31,6 +31,16 @@ export class PublicController {
     private readonly publicService: PublicService
   ) {}
 
+  @Get("games/mark-stale/:gamingService")
+  async markGamingServiceGamesAsStale(
+    @Param("gamingService") gamingService: GamingService
+  ) {
+    await this.dbService.db.game.updateMany({
+      where: { gamingService },
+      data: { isStale: true }
+    });
+  }
+
   @Post("user/trackedAccount")
   async addTrackedAccount(@Body() newAccount: AddTrackedAccountPayload) {
     const foundUser = await this.dbService.db.user.findFirst({
