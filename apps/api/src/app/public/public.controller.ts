@@ -14,6 +14,7 @@ import {
 import type { GamingService } from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
+import { RetroachievementsService } from "@/api/shared/integrations/retroachievements/retroachievements.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
 import type {
@@ -30,18 +31,6 @@ export class PublicController {
     private readonly dbService: DbService,
     private readonly publicService: PublicService
   ) {}
-
-  @Get("games/mark-stale/:gamingService")
-  async markGamingServiceGamesAsStale(
-    @Param("gamingService") gamingService: GamingService
-  ) {
-    await this.dbService.db.game.updateMany({
-      where: { gamingService },
-      data: { isStale: true }
-    });
-
-    return { status: "success" };
-  }
 
   @Post("user/trackedAccount")
   async addTrackedAccount(@Body() newAccount: AddTrackedAccountPayload) {

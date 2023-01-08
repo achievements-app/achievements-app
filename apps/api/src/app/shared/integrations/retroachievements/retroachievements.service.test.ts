@@ -57,7 +57,7 @@ describe("Service: RetroachievementsService", () => {
 
     jest
       .spyOn(dataService, "fetchDeepGameInfo")
-      .mockResolvedValueOnce({ ...mockServiceTitle, titleCompletionRate: 12 });
+      .mockResolvedValueOnce(mockServiceTitle);
 
     const retroachievementsService = app.get(RetroachievementsService);
 
@@ -77,7 +77,6 @@ describe("Service: RetroachievementsService", () => {
     expect(addedGame.name).toEqual(mockServiceTitle.title);
     expect(addedGame.serviceTitleId).toEqual(mockServiceTitleIds[0]);
     expect(addedGame.gamingService).toEqual("RA");
-    expect(addedGame.knownCompletionistRate).toEqual(12);
     expect(addedGame.achievements.length).toEqual(
       mockServiceTitle.achievements.length
     );
@@ -104,7 +103,7 @@ describe("Service: RetroachievementsService", () => {
 
     jest
       .spyOn(dataService, "fetchDeepGameInfo")
-      .mockResolvedValueOnce({ ...mockServiceTitle, titleCompletionRate: 12 });
+      .mockResolvedValueOnce(mockServiceTitle);
 
     const retroachievementsService = app.get(RetroachievementsService);
 
@@ -222,7 +221,7 @@ describe("Service: RetroachievementsService", () => {
 
     jest
       .spyOn(dataService, "fetchDeepGameInfo")
-      .mockResolvedValueOnce({ ...mockServiceTitle, titleCompletionRate: 12 });
+      .mockResolvedValueOnce(mockServiceTitle);
 
     const retroachievementsService = app.get(RetroachievementsService);
 

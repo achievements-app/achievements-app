@@ -46,7 +46,6 @@ export class DbService implements OnModuleInit {
         gamingService: mappedCompleteGame.gamingService,
         name: mappedCompleteGame.name,
         serviceTitleId: mappedCompleteGame.serviceTitleId,
-        knownCompletionistRate: mappedCompleteGame.knownCompletionistRate,
         knownPlayerCount: mappedCompleteGame.knownPlayerCount,
         gamePlatforms: mappedCompleteGame.gamePlatforms,
         xboxAchievementsSchemaKind:
@@ -499,7 +498,6 @@ export class DbService implements OnModuleInit {
       data: {
         knownPlayerCount,
         name: mappedCompleteGame.name,
-        knownCompletionistRate: mappedCompleteGame.knownCompletionistRate,
         gamePlatforms: mappedCompleteGame.gamePlatforms,
         isStale: false,
         coverImageUrl: mappedCompleteGame.coverImageUrl,
