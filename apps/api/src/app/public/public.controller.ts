@@ -39,6 +39,8 @@ export class PublicController {
       where: { gamingService },
       data: { isStale: true }
     });
+
+    return { status: "success" };
   }
 
   @Post("user/trackedAccount")
