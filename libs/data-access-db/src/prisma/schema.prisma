@@ -93,7 +93,6 @@ model TrackedAccount {
   updatedAt        DateTime      @updatedAt
   gamingService    GamingService
   accountUserName  String
-  hasDoneFirstSync Boolean       @default(false)
   serviceAccountId String?
 
   gameProgressEntities UserGameProgress[]
