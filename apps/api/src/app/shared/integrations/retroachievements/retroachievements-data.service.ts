@@ -34,7 +34,7 @@ export class RetroachievementsDataService {
   async fetchDeepGameInfo(serviceTitleId: number | string) {
     const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 
-    await clientInstance.limiter.removeTokens(2);
+    await clientInstance.limiter.removeTokens(1);
 
     return clientInstance.client.getExtendedGameInfoByGameId(
       Number(serviceTitleId)
