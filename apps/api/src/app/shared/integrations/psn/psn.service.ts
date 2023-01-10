@@ -48,7 +48,7 @@ export class PsnService {
       (achievement) => achievement.isEarned
     );
 
-    const newUserGameProgress = await this.dbService.addNewUserGameProgress(
+    const { newUserGameProgress } = await this.dbService.addNewUserGameProgress(
       addedGame.id,
       trackedAccount,
       earnedAchievements

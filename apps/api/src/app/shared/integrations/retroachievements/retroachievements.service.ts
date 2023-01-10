@@ -13,6 +13,7 @@ import type {
 
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
+import { TrackedEventsService } from "@/api/shared/tracked-events/tracked-events.service";
 
 import { RetroachievementsDataService } from "./retroachievements-data.service";
 import { mapAchievementToMappedGameAchievement } from "./utils/mapAchievementToMappedGameAchievement";
@@ -25,7 +26,8 @@ export class RetroachievementsService {
 
   constructor(
     private readonly dataService: RetroachievementsDataService,
-    private readonly dbService: DbService
+    private readonly dbService: DbService,
+    private readonly trackedEventsService: TrackedEventsService
   ) {}
 
   /**
@@ -74,11 +76,19 @@ export class RetroachievementsService {
         serviceTitleId
       );
 
-    const newUserGameProgress = await this.dbService.addNewUserGameProgress(
-      storedGameId,
-      trackedAccount,
-      userEarnedAchievements
-    );
+    const { newUserGameProgress, isCompletion } =
+      await this.dbService.addNewUserGameProgress(
+        storedGameId,
+        trackedAccount,
+        userEarnedAchievements
+      );
+
+    if (isCompletion) {
+      this.trackedEventsService.trackRetroachievementsNewMastery(
+        trackedAccount.id,
+        storedGameId
+      );
+    }
 
     this.#logger.log(
       `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGameId} as ${newUserGameProgress.id}`
@@ -180,10 +190,18 @@ export class RetroachievementsService {
     // for the game. It's likely they're stale, and we're already doing
     // work on them anyway. So instead of a find, this should be an upsert.
 
-    await this.dbService.updateExistingUserGameProgress(
-      existingUserGameProgress,
-      earnedGameAchievements
-    );
+    const { isCompletion } =
+      await this.dbService.updateExistingUserGameProgress(
+        existingUserGameProgress,
+        earnedGameAchievements
+      );
+
+    if (isCompletion) {
+      this.trackedEventsService.trackRetroachievementsNewMastery(
+        trackedAccount.id,
+        storedGameId
+      );
+    }
 
     this.#logger.log(
       `Updated UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGameId}`

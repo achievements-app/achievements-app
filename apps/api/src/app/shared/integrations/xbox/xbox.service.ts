@@ -90,7 +90,7 @@ export class XboxService {
       (achievement) => achievement.earnedOn
     );
 
-    const newUserGameProgress = await this.dbService.addNewUserGameProgress(
+    const { newUserGameProgress } = await this.dbService.addNewUserGameProgress(
       storedGame.id,
       trackedAccount,
       earnedAchievements
