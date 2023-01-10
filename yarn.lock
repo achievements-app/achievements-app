@@ -7372,10 +7372,10 @@ restore-cursor@^3.1.0:
     onetime "^5.1.0"
     signal-exit "^3.0.2"
 
-retroachievements-js@^1.3.2:
-  version "1.3.2"
-  resolved "https://registry.yarnpkg.com/retroachievements-js/-/retroachievements-js-1.3.2.tgz#69f7ce489712ba7f4bb4df5b01e5dbfae646bca8"
-  integrity sha512-s9x+EEEaxmkVxsHIOhbaaAvZh+NekEmz6uWCK5RKO9zOsraE8l9aF5DHtdgZy5It7d6AeAEb+y17FTEZg6+wCg==
+retroachievements-js@^1.3.3:
+  version "1.3.3"
+  resolved "https://registry.yarnpkg.com/retroachievements-js/-/retroachievements-js-1.3.3.tgz#a9c7f2d22f3b13e59120eafcb0834d2a80894d4f"
+  integrity sha512-5JiOqCcprmntWtSs9+WAUOi4V92mf+BglsbFOSxObLOpMb0ySyQjj0a29zG8D9IyR71m96vHfQ1zah+JP09jWg==
   dependencies:
     camelcase-keys "^6.2.2"
     isomorphic-unfetch "^3.1.0"
