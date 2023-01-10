@@ -32,7 +32,11 @@ export const buildGamePublicUserAchievements = (
       earnedRate: gameAchievement.knownEarnerPercentage,
       gamingService: game.gamingService,
       points: gameAchievement?.vanillaPoints ?? undefined,
-      psnTrophyKind: gameAchievement?.psnTrophyKind?.toLowerCase() as any
+      psnTrophyKind: gameAchievement?.psnTrophyKind?.toLowerCase() as
+        | "bronze"
+        | "silver"
+        | "gold"
+        | "platinum"
     };
   });
 };

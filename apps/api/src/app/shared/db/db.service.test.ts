@@ -346,7 +346,7 @@ describe("Service: DbService", () => {
           trackedAccount.gamingService === storedGame.gamingService
       );
 
-      const newUserGameProgress = await dbService.addNewUserGameProgress(
+      const { newUserGameProgress } = await dbService.addNewUserGameProgress(
         storedGame.id,
         neededTrackedAccount,
         mockServiceEarnedAchievements
@@ -358,7 +358,7 @@ describe("Service: DbService", () => {
         mockMappedCompleteGame.achievements[2]
       );
 
-      const updatedUserGameProgress =
+      const { updatedUserGameProgress } =
         await dbService.updateExistingUserGameProgress(
           newUserGameProgress,
           mockServiceEarnedAchievements
@@ -394,7 +394,7 @@ describe("Service: DbService", () => {
           trackedAccount.gamingService === storedGame.gamingService
       );
 
-      const newUserGameProgress = await dbService.addNewUserGameProgress(
+      const { newUserGameProgress } = await dbService.addNewUserGameProgress(
         storedGame.id,
         neededTrackedAccount,
         mockServiceEarnedAchievements

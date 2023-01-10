@@ -14,7 +14,6 @@ import {
 import type { GamingService } from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
-import { RetroachievementsService } from "@/api/shared/integrations/retroachievements/retroachievements.service";
 import { Logger } from "@/api/shared/logger/logger.service";
 
 import type {
@@ -31,6 +30,11 @@ export class PublicController {
     private readonly dbService: DbService,
     private readonly publicService: PublicService
   ) {}
+
+  @Get("playground")
+  async playground() {
+    return { status: "success" };
+  }
 
   @Post("user/trackedAccount")
   async addTrackedAccount(@Body() newAccount: AddTrackedAccountPayload) {

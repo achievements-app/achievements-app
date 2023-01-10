@@ -123,6 +123,9 @@ export class DbService implements OnModuleInit {
       }
     });
 
+    const isCompletion =
+      serviceEarnedAchievements.length === allGameStoredAchievements.length;
+
     this.#logger.log(
       `Created UserGameProgress for ${trackedAccount.gamingService}:${
         trackedAccount.accountUserName
@@ -131,7 +134,44 @@ export class DbService implements OnModuleInit {
       }`
     );
 
-    return newUserGameProgress;
+    return { newUserGameProgress, isCompletion };
+  }
+
+  async computeGamingServiceCompletionCount(
+    trackedAccountId: string,
+    gamingService: GamingService
+  ) {
+    this.#logger.log(
+      `Computing ${gamingService} completion count for TrackedAccount ${trackedAccountId}`
+    );
+
+    let completionCount = 0;
+
+    // We're selecting the number of unlocked achievements associated
+    // with the progress and the number of achievements associated
+    // with the game. If these two counts match, it means the progress
+    // has unlocked all the achievements with the game and it is indeed
+    // a completion.
+    const progressesWithCounts = await this.db.userGameProgress.findMany({
+      where: { trackedAccountId, game: { gamingService } },
+      select: {
+        _count: { select: { earnedAchievements: true } },
+        game: {
+          select: { _count: { select: { achievements: true } } }
+        }
+      }
+    });
+
+    for (const progressEntity of progressesWithCounts) {
+      if (
+        progressEntity._count.earnedAchievements ===
+        progressEntity.game._count.achievements
+      ) {
+        completionCount += 1;
+      }
+    }
+
+    return completionCount;
   }
 
   async findAllHighPriorityUsers() {
@@ -472,11 +512,14 @@ export class DbService implements OnModuleInit {
       select: { id: true }
     });
 
+    const isCompletion =
+      allEarnedAchievements.length === allGameStoredAchievements.length;
+
     this.#logger.log(
       `Updated UserGameProgress for ${existingUserGameProgress.trackedAccountId}:${existingUserGameProgress.id}`
     );
 
-    return updatedUserGameProgress;
+    return { updatedUserGameProgress, isCompletion };
   }
 
   async updateMappedCompleteGame(

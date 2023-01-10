@@ -97,10 +97,25 @@ model TrackedAccount {
 
   gameProgressEntities UserGameProgress[]
 
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
+  user          User           @relation(fields: [userId], references: [id])
+  userId        String
+  trackedEvents TrackedEvent[]
 
   @@unique([gamingService, accountUserName])
+}
+
+model TrackedEvent {
+  id        String           @id @default(uuid())
+  createdAt DateTime         @default(now())
+  kind      TrackedEventKind
+  eventData Json
+
+  trackedAccount   TrackedAccount @relation(fields: [trackedAccountId], references: [id])
+  trackedAccountId String
+}
+
+enum TrackedEventKind {
+  RA_NewMastery
 }
 
 enum GamingService {
