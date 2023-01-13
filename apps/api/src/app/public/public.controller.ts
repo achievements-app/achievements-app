@@ -181,6 +181,10 @@ export class PublicController {
         where: { trackedAccountId: foundTrackedAccount.id }
       });
 
+      await this.dbService.db.trackedEvent.deleteMany({
+        where: { trackedAccountId: foundTrackedAccount.id }
+      });
+
       await this.dbService.db.trackedAccount.delete({
         where: { id: foundTrackedAccount.id }
       });
