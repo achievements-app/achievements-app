@@ -6,7 +6,8 @@ import { createGame, createUser } from "@achievements-app/utils-db";
 import {
   generateRaGameInfoAndUserProgress,
   generateRaGameInfoExtended,
-  generateRaUserGameCompletion
+  generateRaUserGameCompletion,
+  generateRaUserRecentlyPlayedGame
 } from "@achievements-app/utils-model-generators";
 
 import { DbService } from "@/api/shared/db/db.service";
@@ -143,6 +144,11 @@ describe("Service: RetroachievementsService", () => {
 
   it("given a RetroAchievements username, can determine which of the user's games are missing and/or stored in our DB", async () => {
     // ARRANGE
+    const storedUser = await createUser();
+    const foundTrackedAccount = storedUser.trackedAccounts.find(
+      (account) => account.gamingService === "RA"
+    );
+
     const storedGame = await createGame({
       gamingService: "RA",
       serviceTitleId: "12345"
@@ -167,7 +173,8 @@ describe("Service: RetroachievementsService", () => {
       staleGameServiceTitleIds
     } =
       await retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
-        "mockUserName"
+        foundTrackedAccount.accountUserName,
+        { isFullSync: true }
       );
 
     // ASSERT
@@ -177,8 +184,126 @@ describe("Service: RetroachievementsService", () => {
     expect(existingGameServiceTitleIds).toEqual([storedGame.serviceTitleId]);
   });
 
+  it("given a RetroAchievements username and no stored progress in the DB, forces a full sync even if a partial sync is requested", async () => {
+    // ARRANGE
+    const storedUser = await createUser();
+    const foundTrackedAccount = storedUser.trackedAccounts.find(
+      (account) => account.gamingService === "RA"
+    );
+
+    const storedGame = await createGame({
+      gamingService: "RA",
+      serviceTitleId: "12345"
+    });
+
+    jest.spyOn(dataService, "fetchAllUserGames").mockResolvedValueOnce([
+      // Two missing, one present.
+      generateRaUserGameCompletion(),
+      generateRaUserGameCompletion(),
+      generateRaUserGameCompletion({
+        gameId: Number(storedGame.serviceTitleId)
+      })
+    ]);
+
+    const retroachievementsService = app.get(RetroachievementsService);
+
+    // ACT
+    const {
+      allUserGames,
+      existingGameServiceTitleIds,
+      missingGameServiceTitleIds,
+      staleGameServiceTitleIds
+    } =
+      await retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
+        foundTrackedAccount.accountUserName,
+        { isFullSync: false }
+      );
+
+    // ASSERT
+    expect(allUserGames.length).toEqual(3);
+    expect(staleGameServiceTitleIds.length).toEqual(0);
+    expect(missingGameServiceTitleIds.length).toEqual(2);
+    expect(existingGameServiceTitleIds).toEqual([storedGame.serviceTitleId]);
+  });
+
+  it("given a RetroAchievements username and stored progress in the DB, allows a partial sync", async () => {
+    // ARRANGE
+    // --- START: SET UP A NEW USER, A RA GAME, AND SOME USER PROGRESS ---
+    const storedUser = await createUser();
+    const foundTrackedAccount = storedUser.trackedAccounts.find(
+      (account) => account.gamingService === "RA"
+    );
+
+    const mockServiceTitleIds = ["12345"];
+    const mockServiceTitle = generateRaGameInfoExtended(
+      {
+        id: Number(mockServiceTitleIds[0])
+      },
+      { achievementCount: 3 }
+    );
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValueOnce(mockServiceTitle);
+
+    const retroachievementsService = app.get(RetroachievementsService);
+
+    const addedGames =
+      await retroachievementsService.addRetroachievementsTitlesToDb(
+        mockServiceTitleIds
+      );
+
+    jest
+      .spyOn(dataService, "fetchUserGameProgress")
+      .mockResolvedValueOnce(
+        generateRaGameInfoAndUserProgress(
+          { id: Number(mockServiceTitleIds[0]) },
+          { earnedAchievementCount: 2 }
+        )
+      );
+
+    await retroachievementsService.createRetroachievementsUserGameProgress(
+      addedGames[0].id,
+      foundTrackedAccount,
+      mockServiceTitleIds[0]
+    );
+    // --- END: SET UP A NEW USER, A RA GAME, AND SOME USER PROGRESS ---
+
+    jest.spyOn(dataService, "fetchRecentUserGames").mockResolvedValueOnce([
+      // Two missing, one present.
+      generateRaUserRecentlyPlayedGame(),
+      generateRaUserRecentlyPlayedGame(),
+      generateRaUserRecentlyPlayedGame({
+        gameId: Number(addedGames[0].serviceTitleId)
+      })
+    ]);
+
+    // ACT
+    const {
+      allUserGames,
+      existingGameServiceTitleIds,
+      missingGameServiceTitleIds,
+      staleGameServiceTitleIds
+    } =
+      await retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
+        foundTrackedAccount.accountUserName,
+        { isFullSync: false }
+      );
+
+    // ASSERT
+    expect(allUserGames.length).toEqual(3);
+    expect(staleGameServiceTitleIds.length).toEqual(0);
+    expect(missingGameServiceTitleIds.length).toEqual(2);
+    expect(existingGameServiceTitleIds).toEqual([addedGames[0].serviceTitleId]);
+  });
+
   it("while fetching a list of user's games, informs the caller of which games in the DB are stale", async () => {
     // ARRANGE
+    const storedUser = await createUser();
+    const foundTrackedAccount = storedUser.trackedAccounts.find(
+      (account) => account.gamingService === "RA"
+    );
+
     const storedGame = await createGame({
       gamingService: "RA",
       serviceTitleId: "12345",
@@ -199,7 +324,8 @@ describe("Service: RetroachievementsService", () => {
     // ACT
     const { staleGameServiceTitleIds } =
       await retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
-        "mockUserName"
+        foundTrackedAccount.accountUserName,
+        { isFullSync: true }
       );
 
     // ASSERT

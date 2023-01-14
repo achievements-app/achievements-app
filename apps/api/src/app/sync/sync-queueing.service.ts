@@ -18,13 +18,13 @@ export class SyncQueueingService {
     private readonly syncQueue: Queue<SyncQueuePayload>
   ) {}
 
-  beginAccountSync(trackedAccount: TrackedAccount) {
+  beginAccountSync(trackedAccount: TrackedAccount, depth: "full" | "partial") {
     if (trackedAccount.gamingService === "PSN") {
       return this.beginPsnAccountSync(trackedAccount);
     }
 
     if (trackedAccount.gamingService === "RA") {
-      return this.beginRetroachievementsAccountSync(trackedAccount);
+      return this.beginRetroachievementsAccountSync(trackedAccount, depth);
     }
 
     if (trackedAccount.gamingService === "XBOX") {
@@ -34,7 +34,8 @@ export class SyncQueueingService {
 
   async beginPsnAccountSync(trackedAccount: TrackedAccount) {
     const payload: SyncUserGamesPayload = {
-      trackedAccount
+      trackedAccount,
+      syncKind: "full"
     };
 
     this.#logger.logQueueingJob(syncJobNames.syncPsnUserGames, payload);
@@ -46,9 +47,13 @@ export class SyncQueueingService {
     this.#logger.logQueuedJob(newJob.name, newJob.id);
   }
 
-  async beginRetroachievementsAccountSync(trackedAccount: TrackedAccount) {
+  async beginRetroachievementsAccountSync(
+    trackedAccount: TrackedAccount,
+    depth: "partial" | "full"
+  ) {
     const payload: SyncUserGamesPayload = {
-      trackedAccount
+      trackedAccount,
+      syncKind: depth
     };
 
     this.#logger.logQueueingJob(
@@ -65,7 +70,8 @@ export class SyncQueueingService {
 
   async beginXboxAccountSync(trackedAccount: TrackedAccount) {
     const payload: SyncUserGamesPayload = {
-      trackedAccount
+      trackedAccount,
+      syncKind: "full"
     };
 
     this.#logger.logQueueingJob(syncJobNames.syncXboxUserGames, payload);

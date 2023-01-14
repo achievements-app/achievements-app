@@ -386,6 +386,18 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  async getGameProgressEntitiesCount(
+    accountUserName: string,
+    gamingService: GamingService
+  ): Promise<number> {
+    const queryResult = await this.db.trackedAccount.findFirst({
+      where: { gamingService, accountUserName },
+      select: { _count: { select: { gameProgressEntities: true } } }
+    });
+
+    return queryResult?._count?.gameProgressEntities ?? 0;
+  }
+
   async getMultipleGamesExistenceStatus(
     gamingService: GamingService,
     serviceTitleIds: string[]

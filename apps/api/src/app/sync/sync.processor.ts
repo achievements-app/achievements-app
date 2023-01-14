@@ -48,7 +48,8 @@ export class SyncProcessor extends BaseProcessor {
       staleGameServiceTitleIds
     } =
       await this.retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
-        job.data.trackedAccount.accountUserName
+        job.data.trackedAccount.accountUserName,
+        { isFullSync: job.data.syncKind === "full" }
       );
 
     // Add all the missing games and their achievements to our DB.

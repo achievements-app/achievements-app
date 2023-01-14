@@ -19,6 +19,7 @@ import { RetroachievementsDataService } from "./retroachievements-data.service";
 import { mapAchievementToMappedGameAchievement } from "./utils/mapAchievementToMappedGameAchievement";
 import { mapGameInfoExtendedToCompleteGame } from "./utils/mapGameInfoExtendedToCompleteGame";
 import { mapUserGameCompletionToStoredGame } from "./utils/mapUserGameCompletionToStoredGame";
+import { mapUserRecentlyPlayedGameToMappedGame } from "./utils/mapUserRecentlyPlayedGameToMappedGame";
 
 @Injectable()
 export class RetroachievementsService {
@@ -103,13 +104,20 @@ export class RetroachievementsService {
    * Return both lists of serviceTitleIds.
    */
   async getMissingAndPresentUserRetroachievementsGames(
-    retroachievementsUserName: string
+    retroachievementsUserName: string,
+    /**
+     * Oftentimes we'll only do a partial sync to save bandwidth.
+     * This issue emerges on huge accounts, where consistently pulling
+     * their entire game list is extremely network intensive.
+     */
+    options: { isFullSync: boolean }
   ) {
     // First, fetch the list of all the user games. From this, we'll
     // have all the title IDs so we can check our database for what
     // games we have and what games we're missing.
-    const allUserGames = await this.#fetchUserPlayedGames(
-      retroachievementsUserName
+    const allUserGames = await this.#fetchUserSyncGames(
+      retroachievementsUserName,
+      options.isFullSync
     );
 
     const allUserServiceTitleIds = allUserGames.map(
@@ -218,12 +226,58 @@ export class RetroachievementsService {
     return mapGameInfoExtendedToCompleteGame(gameInfoExtended);
   }
 
-  async #fetchUserPlayedGames(targetUserName: string): Promise<MappedGame[]> {
+  async #fetchUserSyncGames(
+    targetUserName: string,
+    isRequestingFullSync: boolean
+  ): Promise<MappedGame[]> {
+    // If the user has no stored progress whatsoever, we'll always
+    // fall back to trying to do a full sync for that user. This is
+    // because a partial sync will no doubt miss some progress.
+    const storedProgressCount =
+      await this.dbService.getGameProgressEntitiesCount(targetUserName, "RA");
+
+    if (storedProgressCount === 0) {
+      this.#logger.verbose(
+        `Falling back to doing a full sync for RA user ${targetUserName}. No current stored progress.`
+      );
+    }
+
+    const mustDoFullSync = storedProgressCount === 0 || isRequestingFullSync;
+
+    let allUserGames: MappedGame[] = [];
+    if (mustDoFullSync) {
+      allUserGames = await this.#fetchAllUserPlayedGames(targetUserName);
+    } else {
+      allUserGames = await this.#fetchRecentUserPlayedGames(targetUserName);
+    }
+
+    return allUserGames;
+  }
+
+  async #fetchAllUserPlayedGames(
+    targetUserName: string
+  ): Promise<MappedGame[]> {
     const allUserPlayedGames = await this.dataService.fetchAllUserGames(
       targetUserName
     );
 
     return allUserPlayedGames.map(mapUserGameCompletionToStoredGame);
+  }
+
+  async #fetchRecentUserPlayedGames(
+    targetUserName: string
+  ): Promise<MappedGame[]> {
+    const allUserRecentGames = await this.dataService.fetchRecentUserGames(
+      targetUserName
+    );
+
+    // Ignore any games that the user may have started but
+    // didn't actually do anything in the game with.
+    const onlyWithSomeProgress = allUserRecentGames.filter(
+      (recentGame) => recentGame.numAchievedHardcore > 0
+    );
+
+    return onlyWithSomeProgress.map(mapUserRecentlyPlayedGameToMappedGame);
   }
 
   async #fetchUserGameUnlockedAchievements(

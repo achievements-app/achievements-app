@@ -7,6 +7,17 @@ import { initializeRetroAchievementsClientPool } from "./utils/initializeRetroAc
 export class RetroachievementsDataService {
   #clientPool = initializeRetroAchievementsClientPool();
 
+  async fetchRecentUserGames(targetUserName: string) {
+    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
+
+    await clientInstance.limiter.removeTokens(1);
+
+    return await clientInstance.client.getUserRecentlyPlayedGames(
+      targetUserName,
+      50
+    );
+  }
+
   async fetchAllUserGames(targetUserName: string) {
     const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 

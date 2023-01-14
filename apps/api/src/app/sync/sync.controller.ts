@@ -64,7 +64,7 @@ export class SyncController {
     await this.syncQueue.addBulk(
       allTrackedAccounts.map((trackedAccount) => ({
         name: syncJobNames.syncXboxUserGames,
-        data: { trackedAccount }
+        data: { trackedAccount, syncKind: "full" }
       }))
     );
 
@@ -95,7 +95,8 @@ export class SyncController {
     }
 
     await this.syncQueueingService.beginRetroachievementsAccountSync(
-      foundTrackedAccount
+      foundTrackedAccount,
+      "partial"
     );
 
     return { status: "success" };
@@ -156,6 +157,13 @@ export class SyncController {
     }
 
     await this.syncQueueingService.beginPsnAccountSync(foundTrackedAccount);
+
+    return { status: "success" };
+  }
+
+  @Get("flush-all-jobs")
+  async flushAllJobs() {
+    await this.syncQueue.obliterate();
 
     return { status: "success" };
   }
