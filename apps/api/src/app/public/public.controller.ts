@@ -33,7 +33,12 @@ export class PublicController {
 
   @Get("playground")
   async playground() {
-    return { status: "success" };
+    const progress = await this.getRetroachievementsUserProgress("deng");
+
+    return {
+      status: "success",
+      masteries: progress.filter((p) => p.completedOn).length
+    };
   }
 
   @Post("user/trackedAccount")
@@ -151,6 +156,10 @@ export class PublicController {
       serviceAccountUserName: string;
     }
   ) {
+    this.#logger.log(
+      `Deleting TrackedAccount entity ${existingAccount.gamingService}:${existingAccount.serviceAccountUserName}`
+    );
+
     const foundTrackedAccount =
       await this.dbService.db.trackedAccount.findFirst({
         where: {
@@ -188,6 +197,10 @@ export class PublicController {
       await this.dbService.db.trackedAccount.delete({
         where: { id: foundTrackedAccount.id }
       });
+
+      this.#logger.log(
+        `Deleted TrackedAccount entity ${existingAccount.gamingService}:${existingAccount.serviceAccountUserName}`
+      );
 
       return { status: "success" };
     }
