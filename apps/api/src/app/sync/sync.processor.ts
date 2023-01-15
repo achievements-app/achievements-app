@@ -70,7 +70,7 @@ export class SyncProcessor extends BaseProcessor {
     } =
       await this.retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
         job.data.trackedAccount.accountUserName,
-        { isFullSync: job.data.syncKind === "full" || missingPoints > 800 }
+        { isFullSync: job.data.syncKind === "full" }
       );
 
     // Add all the missing games and their achievements to our DB.
