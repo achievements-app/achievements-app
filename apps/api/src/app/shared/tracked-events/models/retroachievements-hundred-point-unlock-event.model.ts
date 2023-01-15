@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
-export interface RetroachievementsNewMasteryEvent
+export interface RetroachievementsHundredPointUnlockEvent
   extends Prisma.InputJsonObject {
   game: {
     name: string;
@@ -8,14 +8,14 @@ export interface RetroachievementsNewMasteryEvent
     serviceTitleId: string;
   };
 
-  hardestAchievement: {
+  achievement: {
     name: string;
     description: string;
-    points: number;
+    serviceAchievementId: string;
   };
 
   appUserName: string;
   trackedAccountUserName: string;
-  totalGamePoints: number;
-  userMasteryCount: number;
+  userHundredPointUnlocksCount: number;
+  totalRaUnlockerCount: number;
 }

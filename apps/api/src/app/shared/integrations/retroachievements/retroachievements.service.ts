@@ -77,18 +77,33 @@ export class RetroachievementsService {
         serviceTitleId
       );
 
-    const { newUserGameProgress, isCompletion } =
+    const { newUserGameProgress, isCompletion, scoringThresholdAchievements } =
       await this.dbService.addNewUserGameProgress(
         storedGameId,
         trackedAccount,
-        userEarnedAchievements
+        userEarnedAchievements,
+        undefined,
+        // TODO: Change this to 100 after we're satisfied with testing results.
+        { trackEventOnScoringThreshold: 20 }
       );
 
     if (isCompletion) {
-      this.trackedEventsService.trackRetroachievementsNewMastery(
+      await this.trackedEventsService.trackRetroachievementsNewMastery(
         trackedAccount.id,
         storedGameId
       );
+    }
+
+    // Report new 100-point unlocks.
+    if (scoringThresholdAchievements.length > 0) {
+      for (const scoringThresholdAchievement of scoringThresholdAchievements) {
+        await this.trackedEventsService.trackRetroachievementsHundredPointUnlocks(
+          trackedAccount.id,
+          storedGameId,
+          scoringThresholdAchievement.serviceAchievementId,
+          scoringThresholdAchievement.knownEarnerCount
+        );
+      }
     }
 
     this.#logger.log(
@@ -227,17 +242,32 @@ export class RetroachievementsService {
     // for the game. It's likely they're stale, and we're already doing
     // work on them anyway. So instead of a find, this should be an upsert.
 
-    const { isCompletion } =
+    const { isCompletion, scoringThresholdAchievements } =
       await this.dbService.updateExistingUserGameProgress(
         existingUserGameProgress,
-        earnedGameAchievements
+        earnedGameAchievements,
+        // TODO: Change this to 100 after we're satisfied with testing results.
+        { trackEventOnScoringThreshold: 20 }
       );
 
+    // Report new masteries.
     if (isCompletion) {
-      this.trackedEventsService.trackRetroachievementsNewMastery(
+      await this.trackedEventsService.trackRetroachievementsNewMastery(
         trackedAccount.id,
         storedGameId
       );
+    }
+
+    // Report new 100-point unlocks.
+    if (scoringThresholdAchievements.length > 0) {
+      for (const scoringThresholdAchievement of scoringThresholdAchievements) {
+        await this.trackedEventsService.trackRetroachievementsHundredPointUnlocks(
+          trackedAccount.id,
+          storedGameId,
+          scoringThresholdAchievement.serviceAchievementId,
+          scoringThresholdAchievement.knownEarnerCount
+        );
+      }
     }
 
     this.#logger.log(

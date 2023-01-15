@@ -77,7 +77,8 @@ export class DbService implements OnModuleInit {
     storedGameId: string,
     trackedAccount: TrackedAccount,
     serviceEarnedAchievements: MappedGameAchievement[],
-    gameName?: string
+    gameName?: string,
+    options?: Partial<{ trackEventOnScoringThreshold: number }>
   ) {
     this.#logger.log(
       `Creating UserGameProgress for ${trackedAccount.gamingService}:${
@@ -88,6 +89,20 @@ export class DbService implements OnModuleInit {
     const allGameStoredAchievements = await this.findAllStoredGameAchievements(
       storedGameId
     );
+
+    // Do we need to report any unlocked achievements meeting a
+    // certain point threshold? Eg- New RA 100-point unlocks.
+    const scoringThresholdAchievements: MappedGameAchievement[] = [];
+    if (options?.trackEventOnScoringThreshold) {
+      for (const earnedAchievement of serviceEarnedAchievements) {
+        if (
+          (earnedAchievement?.vanillaPoints ?? 0) >=
+          options.trackEventOnScoringThreshold
+        ) {
+          scoringThresholdAchievements.push(earnedAchievement);
+        }
+      }
+    }
 
     const newUserGameProgress = await this.db.userGameProgress.create({
       data: {
@@ -134,7 +149,7 @@ export class DbService implements OnModuleInit {
       }`
     );
 
-    return { newUserGameProgress, isCompletion };
+    return { newUserGameProgress, isCompletion, scoringThresholdAchievements };
   }
 
   async computeGamingServiceCompletionCount(
@@ -436,6 +451,16 @@ export class DbService implements OnModuleInit {
     };
   }
 
+  getSiteUserFromTrackedAccountId(trackedAccountId: string) {
+    return this.db.trackedAccount.findFirst({
+      where: { id: trackedAccountId },
+      select: {
+        accountUserName: true,
+        user: { select: { discordId: true, userName: true } }
+      }
+    });
+  }
+
   async markGameAsStale(gameId: string) {
     const updatedGame = await this.db.game.update({
       where: { id: gameId },
@@ -467,7 +492,8 @@ export class DbService implements OnModuleInit {
       UserGameProgress,
       "id" | "gameId" | "trackedAccountId"
     >,
-    allEarnedAchievements: MappedGameAchievement[]
+    allEarnedAchievements: MappedGameAchievement[],
+    options?: Partial<{ trackEventOnScoringThreshold: number }>
   ) {
     const allGameStoredAchievements = await this.findAllStoredGameAchievements(
       existingUserGameProgress.gameId
@@ -494,6 +520,18 @@ export class DbService implements OnModuleInit {
       );
 
       throw new Error("Missing achievement");
+    }
+
+    // Do we need to report any unlocked achievements meeting a
+    // certain point threshold? Eg- New RA 100-point unlocks.
+    let scoringThresholdAchievements: MappedGameAchievement[] = [];
+    if (options?.trackEventOnScoringThreshold) {
+      scoringThresholdAchievements =
+        await this.#buildAchievementsListMeetingScoringThreshold(
+          existingUserGameProgress.id,
+          allEarnedAchievements,
+          options.trackEventOnScoringThreshold
+        );
     }
 
     // Purge the list of achievements associated with the UserGameProgress entity.
@@ -531,7 +569,11 @@ export class DbService implements OnModuleInit {
       `Updated UserGameProgress for ${existingUserGameProgress.trackedAccountId}:${existingUserGameProgress.id}`
     );
 
-    return { updatedUserGameProgress, isCompletion };
+    return {
+      updatedUserGameProgress,
+      isCompletion,
+      scoringThresholdAchievements
+    };
   }
 
   async updateMappedCompleteGame(
@@ -614,6 +656,41 @@ export class DbService implements OnModuleInit {
     return updatedGame;
   }
 
+  async #buildAchievementsListMeetingScoringThreshold(
+    userGameProgressId: string,
+    allEarnedAchievements: MappedGameAchievement[],
+    scoringThreshold: number
+  ) {
+    const scoringThresholdAchievements: MappedGameAchievement[] = [];
+
+    const storedThresholdAchievements =
+      await this.#getCurrentAchievementsMeetingScoreThresholdForUserProgress(
+        userGameProgressId,
+        scoringThreshold
+      );
+
+    for (const achievement of allEarnedAchievements) {
+      if (achievement.vanillaPoints >= scoringThreshold) {
+        // Is the achievement already stored?
+        // If so, it has likely already been reported.
+        const foundAlreadyStored = storedThresholdAchievements.find(
+          (storedAchievement) =>
+            storedAchievement.achievement.serviceAchievementId ===
+            achievement.serviceAchievementId
+        );
+
+        // If the achievement meeting the threshold is one
+        // we don't have stored progress for the user in our
+        // DB yet, we should definitely report an event.
+        if (!foundAlreadyStored) {
+          scoringThresholdAchievements.push(achievement);
+        }
+      }
+    }
+
+    return scoringThresholdAchievements;
+  }
+
   /**
    * Given a UserGameProgress entity, wipe all UserEarnedAchievement
    * entities that are associated with it.
@@ -623,6 +700,19 @@ export class DbService implements OnModuleInit {
       where: {
         gameProgressEntityId: userGameProgressId
       }
+    });
+  }
+
+  async #getCurrentAchievementsMeetingScoreThresholdForUserProgress(
+    userGameProgressId: string,
+    targetScore: number
+  ) {
+    return await this.db.userEarnedAchievement.findMany({
+      where: {
+        gameProgressEntityId: userGameProgressId,
+        achievement: { vanillaPoints: { gte: targetScore } }
+      },
+      select: { achievement: { select: { serviceAchievementId: true } } }
     });
   }
 

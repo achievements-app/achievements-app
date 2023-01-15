@@ -5,13 +5,64 @@ import { TrackedEventKind } from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
 
-import type { RetroachievementsNewMasteryEvent } from "./models";
+import type {
+  RetroachievementsHundredPointUnlockEvent,
+  RetroachievementsNewMasteryEvent
+} from "./models";
 
 @Injectable()
 export class TrackedEventsService {
   #logger = new Logger(TrackedEventsService.name);
 
   constructor(private readonly dbService: DbService) {}
+
+  async trackRetroachievementsHundredPointUnlocks(
+    trackedAccountId: string,
+    storedGameId: string,
+    serviceAchievementId: string,
+    reportedTotalEarnerCount: number
+  ) {
+    this.#logger.log(
+      `Adding new ${TrackedEventKind.RA_HundredPointAchievementUnlock} event for ${trackedAccountId}:${storedGameId}`
+    );
+
+    const storedAchievement = await this.dbService.db.gameAchievement.findFirst(
+      {
+        where: { serviceAchievementId }
+      }
+    );
+
+    const canReportEvent = await this.#canReportEventsForTrackedAccount(
+      trackedAccountId
+    );
+    if (!canReportEvent) {
+      this.#logger.error(
+        `Unable to report event for ${trackedAccountId}. Account is not old enough.`
+      );
+
+      return;
+    }
+
+    const constructedEventData =
+      await this.#buildRetroachievementsHundredPointUnlockEvent(
+        trackedAccountId,
+        storedGameId,
+        storedAchievement.id,
+        reportedTotalEarnerCount
+      );
+
+    await this.dbService.db.trackedEvent.create({
+      data: {
+        trackedAccountId,
+        kind: "RA_HundredPointAchievementUnlock",
+        eventData: constructedEventData
+      }
+    });
+
+    this.#logger.log(
+      `Added new ${TrackedEventKind.RA_HundredPointAchievementUnlock} event for ${trackedAccountId}:${storedGameId}:${storedAchievement.id}`
+    );
+  }
 
   /**
    * Given a trackedAccountId and a storedGameId, store a reported mastery
@@ -31,7 +82,7 @@ export class TrackedEventsService {
     );
     if (!canReportEvent) {
       this.#logger.error(
-        `Unable to report new mastery for ${trackedAccountId}. Account is not old enough.`
+        `Unable to report event for ${trackedAccountId}. Account is not old enough.`
       );
 
       return;
@@ -54,6 +105,70 @@ export class TrackedEventsService {
     this.#logger.log(
       `Added new ${TrackedEventKind.RA_NewMastery} event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
     );
+  }
+
+  async #buildRetroachievementsHundredPointUnlockEvent(
+    trackedAccountId: string,
+    storedGameId: string,
+    storedAchievementId: string,
+    reportedTotalEarnerCount: number
+  ): Promise<RetroachievementsHundredPointUnlockEvent> {
+    const foundNeededGameDetails = await this.dbService.db.game.findFirst({
+      where: { id: storedGameId },
+      select: {
+        name: true,
+        gamePlatforms: true,
+        serviceTitleId: true
+      }
+    });
+
+    const consoleName =
+      foundNeededGameDetails.gamePlatforms?.[
+        foundNeededGameDetails.gamePlatforms.length - 1
+      ] ?? "Unknown";
+
+    const foundNeededAchievementDetails =
+      await this.dbService.db.gameAchievement.findFirst({
+        where: { id: storedAchievementId },
+        select: {
+          name: true,
+          description: true,
+          serviceAchievementId: true
+        }
+      });
+
+    const allStoredUserHundredPointAchievements =
+      await this.dbService.db.userEarnedAchievement.findMany({
+        where: {
+          achievement: {
+            game: { gamingService: "RA" },
+            vanillaPoints: { gte: 100 }
+          }
+        },
+        select: { id: true }
+      });
+
+    const siteUser = await this.dbService.getSiteUserFromTrackedAccountId(
+      trackedAccountId
+    );
+
+    return {
+      appUserName: siteUser.user.userName,
+      trackedAccountUserName: siteUser.accountUserName,
+      totalRaUnlockerCount: reportedTotalEarnerCount,
+      userHundredPointUnlocksCount:
+        allStoredUserHundredPointAchievements.length,
+      game: {
+        consoleName,
+        name: foundNeededGameDetails.name,
+        serviceTitleId: foundNeededGameDetails.serviceTitleId
+      },
+      achievement: {
+        name: foundNeededAchievementDetails.name,
+        description: foundNeededAchievementDetails.description,
+        serviceAchievementId: foundNeededAchievementDetails.serviceAchievementId
+      }
+    };
   }
 
   async #buildRetroachievementsNewMasteryEvent(
@@ -110,9 +225,15 @@ export class TrackedEventsService {
         "RA"
       );
 
+    const siteUser = await this.dbService.getSiteUserFromTrackedAccountId(
+      trackedAccountId
+    );
+
     return {
       totalGamePoints,
       userMasteryCount,
+      appUserName: siteUser.user.userName,
+      trackedAccountUserName: siteUser.accountUserName,
       game: {
         consoleName,
         name: foundNeededGameDetails.name,

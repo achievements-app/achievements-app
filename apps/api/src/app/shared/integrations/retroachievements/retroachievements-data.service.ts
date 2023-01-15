@@ -57,7 +57,7 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getUserSummary(targetUserName, 0);
+    return clientInstance.client.getUserSummary(targetUserName);
   }
 
   // We use a very naive load balancing strategy here.
