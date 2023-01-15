@@ -40,6 +40,9 @@ export class SyncProcessor extends BaseProcessor {
     // If we're not missing any points for the user, we don't even need
     // to bother with continuing on. We can stop right here to save on
     // compute and bandwidth.
+    // TODO: Re-enable this when we have a better way of determining if we're
+    // missing points. Right now this consumes 13MB of bandwidth every 5 minutes.
+    /*
     const { missingPoints } =
       await this.retroachievementsService.getIsMissingAnyRetroachievementsPoints(
         job.data.trackedAccount.id,
@@ -53,6 +56,7 @@ export class SyncProcessor extends BaseProcessor {
 
       return;
     }
+    */
 
     // Get all the user games recorded on RA, as well as what games we
     // do and don't currently have stored in our database. Games that we
