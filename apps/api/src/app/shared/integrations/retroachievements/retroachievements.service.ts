@@ -98,6 +98,35 @@ export class RetroachievementsService {
     return newUserGameProgress;
   }
 
+  async getIsMissingAnyRetroachievementsPoints(
+    trackedAccountId: string,
+    retroachievementsUserName: string
+  ): Promise<{ missingPoints: number }> {
+    const { totalPoints } = await this.dataService.fetchUserSummary(
+      retroachievementsUserName
+    );
+
+    const allUserProgressOnlyWithPoints =
+      await this.dbService.db.userGameProgress.findMany({
+        where: { trackedAccountId },
+        select: {
+          earnedAchievements: {
+            select: { achievement: { select: { vanillaPoints: true } } }
+          }
+        }
+      });
+
+    let currentStoredPoints = 0;
+    for (const progress of allUserProgressOnlyWithPoints) {
+      for (const earnedAchievement of progress.earnedAchievements) {
+        currentStoredPoints += earnedAchievement.achievement.vanillaPoints;
+      }
+    }
+
+    const missingPoints = totalPoints - currentStoredPoints;
+    return { missingPoints };
+  }
+
   /**
    * Given a username from RetroAchievements, fetch that user's list of games.
    * Then, determine which of those games we have stored and which ones we don't.

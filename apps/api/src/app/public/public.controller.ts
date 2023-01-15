@@ -33,12 +33,7 @@ export class PublicController {
 
   @Get("playground")
   async playground() {
-    const progress = await this.getRetroachievementsUserProgress("deng");
-
-    return {
-      status: "success",
-      masteries: progress.filter((p) => p.completedOn).length
-    };
+    return { status: "success" };
   }
 
   @Post("user/trackedAccount")

@@ -18,7 +18,7 @@ export class SyncQueueingService {
     private readonly syncQueue: Queue<SyncQueuePayload>
   ) {}
 
-  beginAccountSync(trackedAccount: TrackedAccount, depth: "full" | "partial") {
+  beginAccountSync(trackedAccount: TrackedAccount, depth?: "full" | "partial") {
     if (trackedAccount.gamingService === "PSN") {
       return this.beginPsnAccountSync(trackedAccount);
     }
@@ -49,7 +49,7 @@ export class SyncQueueingService {
 
   async beginRetroachievementsAccountSync(
     trackedAccount: TrackedAccount,
-    depth: "partial" | "full"
+    depth?: "partial" | "full"
   ) {
     const payload: SyncUserGamesPayload = {
       trackedAccount,

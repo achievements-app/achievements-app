@@ -7,6 +7,26 @@ import { initializeRetroAchievementsClientPool } from "./utils/initializeRetroAc
 export class RetroachievementsDataService {
   #clientPool = initializeRetroAchievementsClientPool();
 
+  async fetchAllUserGames(targetUserName: string) {
+    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
+
+    await clientInstance.limiter.removeTokens(1);
+
+    return await clientInstance.client.getUserGameCompletionStats(
+      targetUserName
+    );
+  }
+
+  async fetchDeepGameInfo(serviceTitleId: number | string) {
+    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
+
+    await clientInstance.limiter.removeTokens(1);
+
+    return clientInstance.client.getExtendedGameInfoByGameId(
+      Number(serviceTitleId)
+    );
+  }
+
   async fetchRecentUserGames(targetUserName: string) {
     const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 
@@ -15,16 +35,6 @@ export class RetroachievementsDataService {
     return await clientInstance.client.getUserRecentlyPlayedGames(
       targetUserName,
       50
-    );
-  }
-
-  async fetchAllUserGames(targetUserName: string) {
-    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
-
-    await clientInstance.limiter.removeTokens(1);
-
-    return await clientInstance.client.getUserGameCompletionStats(
-      targetUserName
     );
   }
 
@@ -42,14 +52,12 @@ export class RetroachievementsDataService {
     );
   }
 
-  async fetchDeepGameInfo(serviceTitleId: number | string) {
+  async fetchUserSummary(targetUserName: string) {
     const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getExtendedGameInfoByGameId(
-      Number(serviceTitleId)
-    );
+    return clientInstance.client.getUserSummary(targetUserName, 0);
   }
 
   // We use a very naive load balancing strategy here.

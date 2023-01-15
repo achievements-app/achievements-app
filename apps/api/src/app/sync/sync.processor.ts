@@ -37,6 +37,23 @@ export class SyncProcessor extends BaseProcessor {
     concurrency: 2
   })
   async processSyncRetroachievementsUserGames(job: Job<SyncUserGamesPayload>) {
+    // If we're not missing any points for the user, we don't even need
+    // to bother with continuing on. We can stop right here to save on
+    // compute and bandwidth.
+    const { missingPoints } =
+      await this.retroachievementsService.getIsMissingAnyRetroachievementsPoints(
+        job.data.trackedAccount.id,
+        job.data.trackedAccount.accountUserName
+      );
+
+    if (missingPoints === 0) {
+      this.logger.log(
+        `Not missing any points for RA:${job.data.trackedAccount.accountUserName}. Ending job.`
+      );
+
+      return;
+    }
+
     // Get all the user games recorded on RA, as well as what games we
     // do and don't currently have stored in our database. Games that we
     // don't have stored, we'll need to fetch and store before we can store
@@ -49,7 +66,7 @@ export class SyncProcessor extends BaseProcessor {
     } =
       await this.retroachievementsService.getMissingAndPresentUserRetroachievementsGames(
         job.data.trackedAccount.accountUserName,
-        { isFullSync: job.data.syncKind === "full" }
+        { isFullSync: job.data.syncKind === "full" || missingPoints > 800 }
       );
 
     // Add all the missing games and their achievements to our DB.

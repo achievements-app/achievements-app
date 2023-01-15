@@ -41,10 +41,7 @@ export class SyncSchedulerService {
           `Starting a high priority partial sync for ${user.userName}:${trackedAccount.gamingService}:${trackedAccount.accountUserName}`
         );
 
-        await this.syncQueueingService.beginAccountSync(
-          trackedAccount,
-          "partial"
-        );
+        await this.syncQueueingService.beginAccountSync(trackedAccount);
       }
     }
   }
