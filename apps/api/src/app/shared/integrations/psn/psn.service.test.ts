@@ -31,7 +31,17 @@ describe("Service: PsnService", () => {
     tokenType: "mockTokenType"
   });
 
-  jest.spyOn(PsnApiModule, "exchangeRefreshTokenForAuthTokens");
+  jest
+    .spyOn(PsnApiModule, "exchangeRefreshTokenForAuthTokens")
+    .mockResolvedValue({
+      accessToken: "mockAccessToken",
+      expiresIn: 100_000,
+      refreshToken: "mockRefreshToken",
+      refreshTokenExpiresIn: 300_000,
+      idToken: "mockIdToken",
+      scope: "mockScope",
+      tokenType: "mockTokenType"
+    });
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({

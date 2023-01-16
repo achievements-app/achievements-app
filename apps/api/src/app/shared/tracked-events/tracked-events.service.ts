@@ -7,7 +7,8 @@ import { DbService } from "@/api/shared/db/db.service";
 
 import type {
   RetroachievementsHundredPointUnlockEvent,
-  RetroachievementsNewMasteryEvent
+  RetroachievementsNewMasteryEvent,
+  XboxNewCompletionEvent
 } from "./models";
 
 @Injectable()
@@ -104,6 +105,40 @@ export class TrackedEventsService {
 
     this.#logger.log(
       `Added new ${TrackedEventKind.RA_NewMastery} event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
+    );
+  }
+
+  async trackXboxNewCompletion(trackedAccountId: string, storedGameId: string) {
+    this.#logger.log(
+      `Adding new XBOX_NewCompletion event for ${trackedAccountId}:${storedGameId}`
+    );
+
+    const canReportEvent = await this.#canReportEventsForTrackedAccount(
+      trackedAccountId
+    );
+    if (!canReportEvent) {
+      this.#logger.error(
+        `Unable to report event for ${trackedAccountId}. Account is not old enough.`
+      );
+
+      return;
+    }
+
+    const constructedEventData = await this.#buildXboxNewCompletionEvent(
+      trackedAccountId,
+      storedGameId
+    );
+
+    await this.dbService.db.trackedEvent.create({
+      data: {
+        trackedAccountId,
+        kind: "XBOX_NewCompletion",
+        eventData: constructedEventData
+      }
+    });
+
+    this.#logger.log(
+      `Added new XBOX_NewCompletion event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
     );
   }
 
@@ -236,6 +271,75 @@ export class TrackedEventsService {
       trackedAccountUserName: siteUser.accountUserName,
       game: {
         consoleName,
+        name: foundNeededGameDetails.name,
+        serviceTitleId: foundNeededGameDetails.serviceTitleId
+      },
+      hardestAchievement: {
+        name: foundNeededGameDetails.achievements[0].name,
+        description: foundNeededGameDetails.achievements[0].description,
+        points: foundNeededGameDetails.achievements[0].vanillaPoints
+      }
+    };
+  }
+
+  async #buildXboxNewCompletionEvent(
+    trackedAccountId: string,
+    storedGameId: string
+  ): Promise<XboxNewCompletionEvent> {
+    const foundNeededGameDetails = await this.dbService.db.game.findFirst({
+      where: { id: storedGameId },
+      select: {
+        name: true,
+        gamePlatforms: true,
+        serviceTitleId: true,
+        achievements: {
+          orderBy: {
+            vanillaPoints: "desc"
+          },
+          select: {
+            name: true,
+            description: true,
+            vanillaPoints: true
+          }
+        }
+      }
+    });
+
+    if (!foundNeededGameDetails) {
+      this.#logger.error(
+        `Couldn't find game details for storedGameId ${storedGameId}`
+      );
+      throw new Error("Unable to find game details for new tracked event.");
+    }
+
+    if (foundNeededGameDetails.achievements.length === 0) {
+      this.#logger.error(
+        `Tried to report a mastery for storedGameId ${storedGameId} that has 0 stored achievements`
+      );
+      throw new Error("No stored achievements for new tracked event.");
+    }
+
+    let totalGamePoints = 0;
+    for (const achievement of foundNeededGameDetails.achievements) {
+      totalGamePoints += achievement.vanillaPoints;
+    }
+
+    const userCompletionCount =
+      await this.dbService.computeGamingServiceCompletionCount(
+        trackedAccountId,
+        "XBOX"
+      );
+
+    const siteUser = await this.dbService.getSiteUserFromTrackedAccountId(
+      trackedAccountId
+    );
+
+    return {
+      totalGamePoints,
+      userCompletionCount,
+      appUserName: siteUser.user.userName,
+      trackedAccountUserName: siteUser.accountUserName,
+      game: {
         name: foundNeededGameDetails.name,
         serviceTitleId: foundNeededGameDetails.serviceTitleId
       },

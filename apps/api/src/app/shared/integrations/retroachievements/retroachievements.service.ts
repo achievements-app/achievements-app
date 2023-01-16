@@ -86,6 +86,7 @@ export class RetroachievementsService {
         { trackEventOnScoringThreshold: 100 }
       );
 
+    // Report new completions.
     if (isCompletion) {
       await this.trackedEventsService.trackRetroachievementsNewMastery(
         trackedAccount.id,

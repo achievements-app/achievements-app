@@ -12,6 +12,7 @@ import type {
 
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
+import { TrackedEventsService } from "@/api/shared/tracked-events/tracked-events.service";
 
 import { mapTitleHistoryEntityToStoredGame } from "./utils/mapTitleHistoryEntityToStoredGame";
 import { mapXboxDeepGameInfoToCompleteGame } from "./utils/mapXboxDeepGameInfoToCompleteGame";
@@ -23,7 +24,8 @@ export class XboxService {
 
   constructor(
     private readonly dataService: XboxDataService,
-    private readonly dbService: DbService
+    private readonly dbService: DbService,
+    private readonly trackedEventsService: TrackedEventsService
   ) {}
 
   async addXboxTitlesToDb(
@@ -90,11 +92,20 @@ export class XboxService {
       (achievement) => achievement.earnedOn
     );
 
-    const { newUserGameProgress } = await this.dbService.addNewUserGameProgress(
-      storedGame.id,
-      trackedAccount,
-      earnedAchievements
-    );
+    const { newUserGameProgress, isCompletion } =
+      await this.dbService.addNewUserGameProgress(
+        storedGame.id,
+        trackedAccount,
+        earnedAchievements
+      );
+
+    // Report new completions.
+    if (isCompletion) {
+      await this.trackedEventsService.trackXboxNewCompletion(
+        trackedAccount.id,
+        storedGame.id
+      );
+    }
 
     this.#logger.log(
       `Created UserGameProgress for ${trackedAccount.gamingService}:${trackedAccount.accountUserName}:${storedGame.id} as ${newUserGameProgress.id}`
@@ -225,10 +236,19 @@ export class XboxService {
       return;
     }
 
-    await this.dbService.updateExistingUserGameProgress(
-      existingUserGameProgress,
-      earnedGameAchievements
-    );
+    const { isCompletion } =
+      await this.dbService.updateExistingUserGameProgress(
+        existingUserGameProgress,
+        earnedGameAchievements
+      );
+
+    // Report new completions.
+    if (isCompletion) {
+      await this.trackedEventsService.trackXboxNewCompletion(
+        trackedAccount.id,
+        storedGame.id
+      );
+    }
   }
 
   /**
