@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { Injectable, Logger } from "@nestjs/common";
 import dayjs from "dayjs";
 
@@ -6,6 +8,7 @@ import { TrackedEventKind } from "@achievements-app/data-access-db";
 import { DbService } from "@/api/shared/db/db.service";
 
 import type {
+  PsnNewPlatinumEvent,
   RetroachievementsHundredPointUnlockEvent,
   RetroachievementsNewMasteryEvent,
   XboxNewCompletionEvent
@@ -16,6 +19,40 @@ export class TrackedEventsService {
   #logger = new Logger(TrackedEventsService.name);
 
   constructor(private readonly dbService: DbService) {}
+
+  async trackPsnNewPlatinum(trackedAccountId: string, storedGameId: string) {
+    this.#logger.log(
+      `Adding new PSN_NewPlatinum event for ${trackedAccountId}:${storedGameId}`
+    );
+
+    const canReportEvent = await this.#canReportEventsForTrackedAccount(
+      trackedAccountId
+    );
+    if (!canReportEvent) {
+      this.#logger.error(
+        `Unable to report event for ${trackedAccountId}. Account is not old enough.`
+      );
+
+      return;
+    }
+
+    const constructedEventData = await this.#buildPsnNewPlatinumEvent(
+      trackedAccountId,
+      storedGameId
+    );
+
+    await this.dbService.db.trackedEvent.create({
+      data: {
+        trackedAccountId,
+        kind: "PSN_NewPlatinum",
+        eventData: constructedEventData
+      }
+    });
+
+    this.#logger.log(
+      `Adding new PSN_NewPlatinum event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
+    );
+  }
 
   async trackRetroachievementsHundredPointUnlocks(
     trackedAccountId: string,
@@ -278,6 +315,74 @@ export class TrackedEventsService {
         name: foundNeededGameDetails.achievements[0].name,
         description: foundNeededGameDetails.achievements[0].description,
         points: foundNeededGameDetails.achievements[0].vanillaPoints
+      }
+    };
+  }
+
+  async #buildPsnNewPlatinumEvent(
+    trackedAccountId: string,
+    storedGameId: string
+  ): Promise<PsnNewPlatinumEvent> {
+    const foundNeededGameDetails = await this.dbService.db.game.findFirst({
+      where: { id: storedGameId },
+      select: {
+        name: true,
+        serviceTitleId: true,
+        achievements: {
+          orderBy: {
+            knownEarnerPercentage: "asc"
+          },
+          select: {
+            name: true,
+            description: true,
+            psnTrophyKind: true,
+            knownEarnerPercentage: true
+          }
+        }
+      }
+    });
+
+    if (!foundNeededGameDetails) {
+      this.#logger.error(
+        `Couldn't find game details for storedGameId ${storedGameId}`
+      );
+      throw new Error("Unable to find game details for new tracked event.");
+    }
+
+    if (foundNeededGameDetails.achievements.length === 0) {
+      this.#logger.error(
+        `Tried to report a mastery for storedGameId ${storedGameId} that has 0 stored achievements`
+      );
+      throw new Error("No stored achievements for new tracked event.");
+    }
+
+    const userPlatinumCount =
+      await this.dbService.findTrackedAccountPsnPlatinumCount(trackedAccountId);
+
+    const siteUser = await this.dbService.getSiteUserFromTrackedAccountId(
+      trackedAccountId
+    );
+
+    const withoutPlatinumAchievements =
+      foundNeededGameDetails.achievements.filter(
+        (achievement) => achievement.psnTrophyKind !== "Platinum"
+      );
+
+    return {
+      userPlatinumCount,
+      appUserName: siteUser.user.userName,
+      trackedAccountUserName: siteUser.accountUserName,
+      game: {
+        name: foundNeededGameDetails.name,
+        serviceTitleId: foundNeededGameDetails.serviceTitleId
+      },
+      hardestAchievement: {
+        name: withoutPlatinumAchievements[0].name,
+        description: withoutPlatinumAchievements[0].description,
+        kind: withoutPlatinumAchievements[0].psnTrophyKind.toLowerCase() as
+          | "bronze"
+          | "silver"
+          | "gold"
       }
     };
   }

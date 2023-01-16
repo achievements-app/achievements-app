@@ -13,6 +13,7 @@ import type { TrackedAccount } from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
 import { Logger } from "@/api/shared/logger/logger.service";
+import { TrackedEventsService } from "@/api/shared/tracked-events/tracked-events.service";
 
 import { PsnDataService } from "./psn-data.service";
 import { mapTrophyResponsesToMappedGameAchievements } from "./utils/mapTrophyResponsesToMappedGameAchievements";
@@ -24,7 +25,8 @@ export class PsnService {
 
   constructor(
     private readonly dataService: PsnDataService,
-    private readonly dbService: DbService
+    private readonly dbService: DbService,
+    private readonly trackedEventsService: TrackedEventsService
   ) {}
 
   async addPsnTitleAndProgressToDb(
@@ -48,11 +50,21 @@ export class PsnService {
       (achievement) => achievement.isEarned
     );
 
-    const { newUserGameProgress } = await this.dbService.addNewUserGameProgress(
-      addedGame.id,
-      trackedAccount,
-      earnedAchievements
-    );
+    const { newUserGameProgress, isPsnPlatinum } =
+      await this.dbService.addNewUserGameProgress(
+        addedGame.id,
+        trackedAccount,
+        earnedAchievements
+      );
+
+    // TODO: Report completions if the game has no platinum or
+    // if the game has more than one trophy set ID (it has DLC).
+    if (isPsnPlatinum) {
+      await this.trackedEventsService.trackPsnNewPlatinum(
+        trackedAccount.id,
+        addedGame.id
+      );
+    }
 
     this.#logger.log(
       `Added title as ${addedGame.id} and progress as ${newUserGameProgress.id} to DB for PSN:${trackedAccount.accountUserName}:${targetUserGame.name}`
@@ -182,13 +194,16 @@ export class PsnService {
       (achievement) => achievement.isEarned
     );
 
+    let hasNewPlatinum = false;
     if (!existingUserGameProgress) {
-      await this.dbService.addNewUserGameProgress(
+      const { isPsnPlatinum } = await this.dbService.addNewUserGameProgress(
         updatedGame.id,
         trackedAccount,
         earnedAchievements,
         updatedGame.name
       );
+
+      hasNewPlatinum = isPsnPlatinum;
     } else {
       const reportedEarnedAchievementsCount = earnedAchievements.length;
       const storedEarnedAchievementsCount =
@@ -199,12 +214,26 @@ export class PsnService {
       );
 
       if (reportedEarnedAchievementsCount !== storedEarnedAchievementsCount) {
-        await this.dbService.updateExistingUserGameProgress(
-          existingUserGameProgress,
-          earnedAchievements
-        );
+        const { isPsnPlatinum } =
+          await this.dbService.updateExistingUserGameProgress(
+            existingUserGameProgress,
+            earnedAchievements
+          );
+
+        hasNewPlatinum = isPsnPlatinum;
       }
     }
+
+    // Report on any new stored platinums.
+    if (hasNewPlatinum) {
+      await this.trackedEventsService.trackPsnNewPlatinum(
+        trackedAccount.id,
+        updatedGame.id
+      );
+    }
+
+    // TODO: Report completions if the game has no platinum or
+    // if the game has more than one trophy set ID (it has DLC).
   }
 
   async useTrackedAccountPsnAccountId(

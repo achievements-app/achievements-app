@@ -118,6 +118,7 @@ enum TrackedEventKind {
   RA_NewMastery
   RA_HundredPointAchievementUnlock
   XBOX_NewCompletion
+  PSN_NewPlatinum
 }
 
 enum GamingService {
