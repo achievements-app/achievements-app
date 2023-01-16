@@ -83,8 +83,7 @@ export class RetroachievementsService {
         trackedAccount,
         userEarnedAchievements,
         undefined,
-        // TODO: Change this to 100 after we're satisfied with testing results.
-        { trackEventOnScoringThreshold: 20 }
+        { trackEventOnScoringThreshold: 100 }
       );
 
     if (isCompletion) {
@@ -246,8 +245,7 @@ export class RetroachievementsService {
       await this.dbService.updateExistingUserGameProgress(
         existingUserGameProgress,
         earnedGameAchievements,
-        // TODO: Change this to 100 after we're satisfied with testing results.
-        { trackEventOnScoringThreshold: 20 }
+        { trackEventOnScoringThreshold: 100 }
       );
 
     // Report new masteries.
