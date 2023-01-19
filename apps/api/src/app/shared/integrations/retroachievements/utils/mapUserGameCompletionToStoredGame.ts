@@ -10,6 +10,6 @@ export const mapUserGameCompletionToStoredGame = (
     gamingService: "RA",
     serviceTitleId: String(userGameCompletion.gameId),
     gamePlatforms: [userGameCompletion.consoleName],
-    knownUserEarnedAchievementCount: userGameCompletion.numAwardedHc ?? 0
+    knownUserEarnedAchievementCount: userGameCompletion.numAwarded ?? 0
   };
 };
