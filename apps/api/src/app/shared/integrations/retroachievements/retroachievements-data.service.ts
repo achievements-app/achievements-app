@@ -12,9 +12,13 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return await clientInstance.client.getUserGameCompletionStats(
-      targetUserName
-    );
+    const userCompletedGames =
+      await clientInstance.client.getUserGameCompletionStats(targetUserName);
+
+    // RetroAchievements returns each game potentially twice. This is because
+    // softcore and hardcore mode are treated as separate games in their DB.
+    // We'll filter out the softcore entries.
+    return userCompletedGames.filter((game) => game.hardcoreMode === 1);
   }
 
   async fetchDeepGameInfo(serviceTitleId: number | string) {
@@ -50,6 +54,14 @@ export class RetroachievementsDataService {
       targetUserName,
       Number(serviceTitleId)
     );
+  }
+
+  async fetchUserPoints(targetUserName: string) {
+    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
+
+    await clientInstance.limiter.removeTokens(1);
+
+    return clientInstance.client.getUserPoints(targetUserName);
   }
 
   async fetchUserSummary(targetUserName: string) {

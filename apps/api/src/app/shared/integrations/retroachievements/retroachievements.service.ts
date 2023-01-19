@@ -117,26 +117,12 @@ export class RetroachievementsService {
     trackedAccountId: string,
     retroachievementsUserName: string
   ): Promise<{ missingPoints: number }> {
-    const { totalPoints } = await this.dataService.fetchUserSummary(
+    const { points: totalPoints } = await this.dataService.fetchUserPoints(
       retroachievementsUserName
     );
 
-    const allUserProgressOnlyWithPoints =
-      await this.dbService.db.userGameProgress.findMany({
-        where: { trackedAccountId },
-        select: {
-          earnedAchievements: {
-            select: { achievement: { select: { vanillaPoints: true } } }
-          }
-        }
-      });
-
-    let currentStoredPoints = 0;
-    for (const progress of allUserProgressOnlyWithPoints) {
-      for (const earnedAchievement of progress.earnedAchievements) {
-        currentStoredPoints += earnedAchievement.achievement.vanillaPoints;
-      }
-    }
+    const currentStoredPoints =
+      await this.dbService.findTrackedAccountPointsSum(trackedAccountId);
 
     const missingPoints = totalPoints - currentStoredPoints;
     return { missingPoints };

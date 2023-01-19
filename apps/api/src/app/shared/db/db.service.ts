@@ -410,6 +410,25 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  async findTrackedAccountPointsSum(trackedAccountId: string): Promise<number> {
+    // This cannot be done natively with Prisma's API. If we try to
+    // do this with what's available in Prisma's API, we have to fetch
+    // every achievement and then iterate over all of them.
+    const queryResult = (await this.db.$queryRaw`
+      SELECT SUM("GameAchievement"."vanillaPoints")
+      FROM "UserGameProgress" as user_game_progress
+      JOIN "UserEarnedAchievement" ON user_game_progress.id = "UserEarnedAchievement"."gameProgressEntityId"
+      JOIN "GameAchievement" ON "UserEarnedAchievement"."gameAchievementId" = "GameAchievement".id
+      WHERE user_game_progress."trackedAccountId" = ${trackedAccountId}
+    `) as Array<{ sum: bigint }>;
+
+    if (queryResult.length === 1) {
+      return Number(queryResult[0].sum);
+    }
+
+    return 0;
+  }
+
   async findTrackedAccountPsnPlatinumCount(
     trackedAccountId: string
   ): Promise<number> {
