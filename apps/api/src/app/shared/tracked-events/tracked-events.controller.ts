@@ -16,11 +16,11 @@ export class TrackedEventsController {
 
   @Sse("stream")
   trackedEventsStream(): Observable<MessageEvent> {
-    return this.trackedEventsService.eventStream$.pipe(
+    return this.trackedEventsService.eventStream$.asObservable().pipe(
       map((trackedEvent) => ({
         id: trackedEvent.id,
-        type: trackedEvent.kind,
         data: {
+          kind: trackedEvent.kind,
           createdAt: trackedEvent.createdAt.toISOString(),
           eventData: trackedEvent.eventData,
           trackedAccountId: trackedEvent.trackedAccountId

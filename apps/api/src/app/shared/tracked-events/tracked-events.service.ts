@@ -225,6 +225,7 @@ export class TrackedEventsService {
     const allStoredUserHundredPointAchievements =
       await this.dbService.db.userEarnedAchievement.findMany({
         where: {
+          gameProgressEntity: { trackedAccountId },
           achievement: {
             game: { gamingService: "RA" },
             vanillaPoints: { gte: 100 }

@@ -10,7 +10,7 @@ const canRunScheduledTasks =
   process.env?.["ARE_SCHEDULED_TASKS_ENABLED"] === "true";
 
 // https://crontab.guru/every-5-minutes
-const EVERY_FIVE_MINUTES = "*/5 * * * *";
+const EVERY_THREE_MINUTES = "*/3 * * * *";
 
 // https://unix.stackexchange.com/a/16094
 const EVERY_TWO_DAYS = "0 0 1-31/2 * *";
@@ -24,7 +24,7 @@ export class SyncSchedulerService {
     private readonly syncQueueingService: SyncQueueingService
   ) {}
 
-  @Cron(EVERY_FIVE_MINUTES)
+  @Cron(EVERY_THREE_MINUTES)
   async runHighPriorityPartialSync() {
     if (!canRunScheduledTasks) {
       return;
