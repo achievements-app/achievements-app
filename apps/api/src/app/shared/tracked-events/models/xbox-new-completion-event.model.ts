@@ -13,6 +13,7 @@ export interface XboxNewCompletionEvent extends Prisma.InputJsonObject {
   };
 
   appUserName: string;
+  appUserDiscordId: string | null;
   trackedAccountUserName: string;
   totalGamePoints: number;
   userCompletionCount: number;

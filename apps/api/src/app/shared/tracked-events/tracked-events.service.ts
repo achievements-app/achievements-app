@@ -2,8 +2,12 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import dayjs from "dayjs";
+import { Subject } from "rxjs";
 
-import { TrackedEventKind } from "@achievements-app/data-access-db";
+import {
+  type TrackedEvent,
+  TrackedEventKind
+} from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
 
@@ -16,6 +20,7 @@ import type {
 
 @Injectable()
 export class TrackedEventsService {
+  eventStream$ = new Subject<TrackedEvent>();
   #logger = new Logger(TrackedEventsService.name);
 
   constructor(private readonly dbService: DbService) {}
@@ -41,13 +46,15 @@ export class TrackedEventsService {
       storedGameId
     );
 
-    await this.dbService.db.trackedEvent.create({
+    const newTrackedEvent = await this.dbService.db.trackedEvent.create({
       data: {
         trackedAccountId,
         kind: "PSN_NewPlatinum",
         eventData: constructedEventData
       }
     });
+
+    this.eventStream$.next(newTrackedEvent);
 
     this.#logger.log(
       `Adding new PSN_NewPlatinum event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
@@ -89,13 +96,15 @@ export class TrackedEventsService {
         reportedTotalEarnerCount
       );
 
-    await this.dbService.db.trackedEvent.create({
+    const newTrackedEvent = await this.dbService.db.trackedEvent.create({
       data: {
         trackedAccountId,
         kind: "RA_HundredPointAchievementUnlock",
         eventData: constructedEventData
       }
     });
+
+    this.eventStream$.next(newTrackedEvent);
 
     this.#logger.log(
       `Added new ${TrackedEventKind.RA_HundredPointAchievementUnlock} event for ${trackedAccountId}:${storedGameId}:${storedAchievement.id}`
@@ -132,13 +141,15 @@ export class TrackedEventsService {
         storedGameId
       );
 
-    await this.dbService.db.trackedEvent.create({
+    const newTrackedEvent = await this.dbService.db.trackedEvent.create({
       data: {
         trackedAccountId,
         kind: "RA_NewMastery",
         eventData: constructedEventData
       }
     });
+
+    this.eventStream$.next(newTrackedEvent);
 
     this.#logger.log(
       `Added new ${TrackedEventKind.RA_NewMastery} event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
@@ -166,13 +177,15 @@ export class TrackedEventsService {
       storedGameId
     );
 
-    await this.dbService.db.trackedEvent.create({
+    const newTrackedEvent = await this.dbService.db.trackedEvent.create({
       data: {
         trackedAccountId,
         kind: "XBOX_NewCompletion",
         eventData: constructedEventData
       }
     });
+
+    this.eventStream$.next(newTrackedEvent);
 
     this.#logger.log(
       `Added new XBOX_NewCompletion event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
@@ -226,6 +239,7 @@ export class TrackedEventsService {
 
     return {
       appUserName: siteUser.user.userName,
+      appUserDiscordId: siteUser.user.discordId ?? null,
       trackedAccountUserName: siteUser.accountUserName,
       totalRaUnlockerCount: reportedTotalEarnerCount,
       userHundredPointUnlocksCount:
@@ -305,6 +319,7 @@ export class TrackedEventsService {
       totalGamePoints,
       userMasteryCount,
       appUserName: siteUser.user.userName,
+      appUserDiscordId: siteUser.user.discordId ?? null,
       trackedAccountUserName: siteUser.accountUserName,
       game: {
         consoleName,
@@ -371,6 +386,7 @@ export class TrackedEventsService {
     return {
       userPlatinumCount,
       appUserName: siteUser.user.userName,
+      appUserDiscordId: siteUser.user.discordId ?? null,
       trackedAccountUserName: siteUser.accountUserName,
       game: {
         name: foundNeededGameDetails.name,
@@ -443,6 +459,7 @@ export class TrackedEventsService {
       totalGamePoints,
       userCompletionCount,
       appUserName: siteUser.user.userName,
+      appUserDiscordId: siteUser.user.discordId ?? null,
       trackedAccountUserName: siteUser.accountUserName,
       game: {
         name: foundNeededGameDetails.name,

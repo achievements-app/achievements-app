@@ -15,6 +15,7 @@ export interface RetroachievementsNewMasteryEvent
   };
 
   appUserName: string;
+  appUserDiscordId: string | null;
   trackedAccountUserName: string;
   totalGamePoints: number;
   userMasteryCount: number;

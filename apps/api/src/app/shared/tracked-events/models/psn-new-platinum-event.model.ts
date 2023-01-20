@@ -13,6 +13,7 @@ export interface PsnNewPlatinumEvent extends Prisma.InputJsonObject {
   };
 
   appUserName: string;
+  appUserDiscordId: string | null;
   trackedAccountUserName: string;
   userPlatinumCount: number;
 }

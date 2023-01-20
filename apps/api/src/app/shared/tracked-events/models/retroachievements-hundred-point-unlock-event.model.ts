@@ -15,6 +15,7 @@ export interface RetroachievementsHundredPointUnlockEvent
   };
 
   appUserName: string;
+  appUserDiscordId: string | null;
   trackedAccountUserName: string;
   userHundredPointUnlocksCount: number;
   totalRaUnlockerCount: number;
