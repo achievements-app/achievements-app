@@ -138,11 +138,19 @@ export class DbService implements OnModuleInit {
       }
     });
 
+    // The set of conditionals below is used for recording TrackedEvent entities.
+    // In the real world, a bot can listen for new TrackedEvent entities and
+    // announce them, perhaps, in a Discord channel.
     const isCompletion =
       serviceEarnedAchievements.length === allGameStoredAchievements.length;
 
     const isPsnPlatinum = serviceEarnedAchievements.some(
       (achievement) => achievement.psnTrophyKind === "Platinum"
+    );
+
+    const isPsnCompletion = this.#getIsPsnCompletion(
+      isCompletion,
+      allGameStoredAchievements
     );
 
     this.#logger.log(
@@ -156,6 +164,7 @@ export class DbService implements OnModuleInit {
     return {
       newUserGameProgress,
       isCompletion,
+      isPsnCompletion,
       isPsnPlatinum,
       scoringThresholdAchievements
     };
@@ -212,7 +221,9 @@ export class DbService implements OnModuleInit {
       },
       select: {
         id: true,
-        serviceAchievementId: true
+        serviceAchievementId: true,
+        psnTrophyKind: true,
+        psnGroupId: true
       }
     });
   }
@@ -568,6 +579,7 @@ export class DbService implements OnModuleInit {
       throw new Error("Missing achievement");
     }
 
+    /** --- Begin detecting if we need to create a new TrackedEvent --- */
     // Do we need to report any unlocked achievements meeting a
     // certain point threshold? Eg- New RA 100-point unlocks.
     let scoringThresholdAchievements: MappedGameAchievement[] = [];
@@ -580,8 +592,12 @@ export class DbService implements OnModuleInit {
         );
     }
 
-    // TODO: We also need to figure out if there's a PSN completion.
+    const isCompletion =
+      allEarnedAchievements.length === allGameStoredAchievements.length;
+
+    // This block is all for creating TrackedEvent entities related to PSN.
     let isPsnPlatinum: boolean | null = null;
+    let isPsnCompletion: boolean | null = null;
     if (options?.isPsnTitle) {
       const isPlatinumUnlockAlreadyStored =
         await this.#getIsPsnPlatinumAlreadyUnlocked(
@@ -596,7 +612,13 @@ export class DbService implements OnModuleInit {
       isPsnPlatinum =
         !isPlatinumUnlockAlreadyStored &&
         doesAchievementsListContainPlatinumUnlock;
+
+      isPsnCompletion = this.#getIsPsnCompletion(
+        isCompletion,
+        allGameStoredAchievements
+      );
     }
+    /** --- End detecting if we need to create a new TrackedEvent --- */
 
     // Purge the list of achievements associated with the UserGameProgress entity.
     // It's easier and faster to do this than try to filter by what's already unlocked.
@@ -626,9 +648,6 @@ export class DbService implements OnModuleInit {
       select: { id: true }
     });
 
-    const isCompletion =
-      allEarnedAchievements.length === allGameStoredAchievements.length;
-
     this.#logger.log(
       `Updated UserGameProgress for ${existingUserGameProgress.trackedAccountId}:${existingUserGameProgress.id}`
     );
@@ -636,6 +655,7 @@ export class DbService implements OnModuleInit {
     return {
       updatedUserGameProgress,
       isCompletion,
+      isPsnCompletion,
       isPsnPlatinum,
       scoringThresholdAchievements
     };
@@ -721,21 +741,6 @@ export class DbService implements OnModuleInit {
     return updatedGame;
   }
 
-  async #getIsPsnPlatinumAlreadyUnlocked(
-    userGameProgressId: string
-  ): Promise<boolean> {
-    const currentStoredPlatinumUnlocksForGameProgress =
-      await this.db.userEarnedAchievement.findMany({
-        where: {
-          gameProgressEntityId: userGameProgressId,
-          achievement: { psnTrophyKind: "Platinum" }
-        },
-        select: { id: true }
-      });
-
-    return currentStoredPlatinumUnlocksForGameProgress.length > 0;
-  }
-
   async #buildAchievementsListMeetingScoringThreshold(
     userGameProgressId: string,
     allEarnedAchievements: MappedGameAchievement[],
@@ -796,6 +801,30 @@ export class DbService implements OnModuleInit {
     });
   }
 
+  #getDoesPsnGameHaveDlc(
+    allGameStoredAchievements: Array<Pick<GameAchievement, "psnGroupId">>
+  ) {
+    return (
+      [
+        // By using a set, we keep only unique elements.
+        ...new Set(
+          allGameStoredAchievements.map(
+            (storedAchievement) => storedAchievement.psnGroupId
+          )
+        )
+        // If there is more than one group ID, the game has DLC.
+      ].length > 1
+    );
+  }
+
+  #getDoesPsnGameHavePlatinumTrophy(
+    allGameStoredAchievements: Array<Pick<GameAchievement, "psnTrophyKind">>
+  ) {
+    return allGameStoredAchievements.some(
+      (storedAchievement) => storedAchievement.psnTrophyKind === "Platinum"
+    );
+  }
+
   /**
    * Determine if any of the achievements a gaming service reports as
    * earned by the user are, in fact, missing from our database. This
@@ -819,5 +848,47 @@ export class DbService implements OnModuleInit {
     return (
       storedEarnedAchievements.length !== reportedEarnedAchievements.length
     );
+  }
+
+  /**
+   * A PSN completion is a little different from just earning a PSN platinum.
+   * A "completion" happens when either there is no platinum trophy at all
+   * (this often happens in PS3 titles and some newer digital-only titles)
+   * or when there is a platinum but there is also DLC with additional achievements
+   * and the user has unlocked those as well.
+   */
+  #getIsPsnCompletion(
+    /** Truthy if we know the user just unlocked all the game's achievements */
+    wasCompletionDetected: boolean,
+    allGameStoredAchievements: Array<
+      Pick<GameAchievement, "psnGroupId" | "psnTrophyKind">
+    >
+  ) {
+    const doesGameHavePlatinumTrophy = this.#getDoesPsnGameHavePlatinumTrophy(
+      allGameStoredAchievements
+    );
+
+    const doesGameHaveDlc = this.#getDoesPsnGameHaveDlc(
+      allGameStoredAchievements
+    );
+
+    return (
+      wasCompletionDetected && (!doesGameHavePlatinumTrophy || doesGameHaveDlc)
+    );
+  }
+
+  async #getIsPsnPlatinumAlreadyUnlocked(
+    userGameProgressId: string
+  ): Promise<boolean> {
+    const currentStoredPlatinumUnlocksForGameProgress =
+      await this.db.userEarnedAchievement.findMany({
+        where: {
+          gameProgressEntityId: userGameProgressId,
+          achievement: { psnTrophyKind: "Platinum" }
+        },
+        select: { id: true }
+      });
+
+    return currentStoredPlatinumUnlocksForGameProgress.length > 0;
   }
 }

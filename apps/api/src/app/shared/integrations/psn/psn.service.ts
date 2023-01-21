@@ -50,17 +50,22 @@ export class PsnService {
       (achievement) => achievement.isEarned
     );
 
-    const { newUserGameProgress, isPsnPlatinum } =
+    const { newUserGameProgress, isPsnCompletion, isPsnPlatinum } =
       await this.dbService.addNewUserGameProgress(
         addedGame.id,
         trackedAccount,
         earnedAchievements
       );
 
-    // TODO: Report completions if the game has no platinum or
-    // if the game has more than one trophy set ID (it has DLC).
     if (isPsnPlatinum) {
       await this.trackedEventsService.trackPsnNewPlatinum(
+        trackedAccount.id,
+        addedGame.id
+      );
+    }
+
+    if (isPsnCompletion) {
+      await this.trackedEventsService.trackPsnNewCompletion(
         trackedAccount.id,
         addedGame.id
       );
@@ -194,15 +199,18 @@ export class PsnService {
       (achievement) => achievement.isEarned
     );
 
+    let hasNewCompletion = false;
     let hasNewPlatinum = false;
     if (!existingUserGameProgress) {
-      const { isPsnPlatinum } = await this.dbService.addNewUserGameProgress(
-        updatedGame.id,
-        trackedAccount,
-        earnedAchievements,
-        updatedGame.name
-      );
+      const { isPsnCompletion, isPsnPlatinum } =
+        await this.dbService.addNewUserGameProgress(
+          updatedGame.id,
+          trackedAccount,
+          earnedAchievements,
+          updatedGame.name
+        );
 
+      hasNewCompletion = isPsnCompletion;
       hasNewPlatinum = isPsnPlatinum;
     } else {
       const reportedEarnedAchievementsCount = earnedAchievements.length;
@@ -214,12 +222,13 @@ export class PsnService {
       );
 
       if (reportedEarnedAchievementsCount !== storedEarnedAchievementsCount) {
-        const { isPsnPlatinum } =
+        const { isPsnCompletion, isPsnPlatinum } =
           await this.dbService.updateExistingUserGameProgress(
             existingUserGameProgress,
             earnedAchievements
           );
 
+        hasNewCompletion = isPsnCompletion;
         hasNewPlatinum = isPsnPlatinum;
       }
     }
@@ -232,8 +241,14 @@ export class PsnService {
       );
     }
 
-    // TODO: Report completions if the game has no platinum or
+    // Report completions if the game has no platinum or
     // if the game has more than one trophy set ID (it has DLC).
+    if (hasNewCompletion) {
+      await this.trackedEventsService.trackPsnNewCompletion(
+        trackedAccount.id,
+        updatedGame.id
+      );
+    }
   }
 
   async useTrackedAccountPsnAccountId(
