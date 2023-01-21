@@ -1,4 +1,6 @@
+/* eslint-disable no-console */
 /* eslint-disable sonarjs/no-duplicate-string */
+
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import * as XboxLiveAuthModule from "@xboxreplay/xboxlive-auth";
@@ -386,15 +388,19 @@ describe("Service: XboxService", () => {
       serviceTitleId: "12345"
     });
 
+    // TODO: Remove this once test flake is fixed.
+    const mockResponseGames = [
+      xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
+      xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
+      xboxApiMocks.generateXboxSanitizedTitleHistoryEntity({
+        titleId: Number(storedGame.serviceTitleId)
+      })
+    ];
+    console.log(mockResponseGames);
+
     jest
       .spyOn(dataService, "fetchCompleteTitleHistoryByXuid")
-      .mockResolvedValueOnce([
-        xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
-        xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
-        xboxApiMocks.generateXboxSanitizedTitleHistoryEntity({
-          titleId: Number(storedGame.serviceTitleId)
-        })
-      ]);
+      .mockResolvedValueOnce(mockResponseGames);
 
     const xboxService = app.get(XboxService);
 
@@ -408,6 +414,9 @@ describe("Service: XboxService", () => {
       "mockXuid",
       "mockGamertag"
     );
+
+    // TODO: Remove this once test flake is fixed.
+    console.log(allUserGames);
 
     // ASSERT
     expect(allUserGames.length).toEqual(3);

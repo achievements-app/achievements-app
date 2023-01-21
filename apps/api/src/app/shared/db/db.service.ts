@@ -90,6 +90,7 @@ export class DbService implements OnModuleInit {
       storedGameId
     );
 
+    let mustMarkAsStale = false;
     const newUserGameProgress = await this.db.userGameProgress.create({
       data: {
         gameId: storedGameId,
@@ -116,13 +117,18 @@ export class DbService implements OnModuleInit {
                   error
                 );
 
-                this.markGameAsStale(storedGameId);
+                mustMarkAsStale = true;
               }
             })
           }
         }
       }
     });
+
+    // This means we need to update all the metadata for the game.
+    if (mustMarkAsStale) {
+      await this.markGameAsStale(storedGameId);
+    }
 
     // The set of conditionals below is used for recording TrackedEvent entities.
     // In the real world, a bot can listen for new TrackedEvent entities and
@@ -269,33 +275,6 @@ export class DbService implements OnModuleInit {
     );
 
     return allCompleteUserGameProgresses;
-  }
-
-  /**
-   * WARNING: This call uses a lot of bandwidth! Use sparingly, and
-   * never on a scheduled job if it can be avoided.
-   */
-  async findAllCompleteUserGameProgressByGamingService(
-    trackedAccountId: string,
-    gamingService: GamingService
-  ) {
-    this.#logger.log(
-      `Finding all ${gamingService} complete UserGameProgress for ${trackedAccountId}`
-    );
-
-    const allUserGameProgress = await this.db.userGameProgress.findMany({
-      where: { trackedAccountId, game: { gamingService } },
-      include: {
-        earnedAchievements: { select: { id: true } },
-        game: { select: { serviceTitleId: true } }
-      }
-    });
-
-    this.#logger.log(
-      `Found ${allUserGameProgress.length} complete UserGameProgress for ${trackedAccountId}`
-    );
-
-    return allUserGameProgress;
   }
 
   async findAllTrackedAccountUserGameProgressByGameIds(
