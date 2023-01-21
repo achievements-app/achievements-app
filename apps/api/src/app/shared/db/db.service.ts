@@ -90,20 +90,6 @@ export class DbService implements OnModuleInit {
       storedGameId
     );
 
-    // Do we need to report any unlocked achievements meeting a
-    // certain point threshold? Eg- New RA 100-point unlocks.
-    const scoringThresholdAchievements: MappedGameAchievement[] = [];
-    if (options?.trackEventOnScoringThreshold) {
-      for (const earnedAchievement of serviceEarnedAchievements) {
-        if (
-          (earnedAchievement?.vanillaPoints ?? 0) >=
-          options.trackEventOnScoringThreshold
-        ) {
-          scoringThresholdAchievements.push(earnedAchievement);
-        }
-      }
-    }
-
     const newUserGameProgress = await this.db.userGameProgress.create({
       data: {
         gameId: storedGameId,
@@ -141,16 +127,15 @@ export class DbService implements OnModuleInit {
     // The set of conditionals below is used for recording TrackedEvent entities.
     // In the real world, a bot can listen for new TrackedEvent entities and
     // announce them, perhaps, in a Discord channel.
-    const isCompletion =
-      serviceEarnedAchievements.length === allGameStoredAchievements.length;
-
-    const isPsnPlatinum = serviceEarnedAchievements.some(
-      (achievement) => achievement.psnTrophyKind === "Platinum"
-    );
-
-    const isPsnCompletion = this.#getIsPsnCompletion(
+    const {
       isCompletion,
-      allGameStoredAchievements
+      isPsnCompletion,
+      isPsnPlatinum,
+      scoringThresholdAchievements
+    } = await this.#determineTrackedEventsForProgressCreate(
+      serviceEarnedAchievements,
+      allGameStoredAchievements,
+      options
     );
 
     this.#logger.log(
@@ -579,46 +564,18 @@ export class DbService implements OnModuleInit {
       throw new Error("Missing achievement");
     }
 
-    /** --- Begin detecting if we need to create a new TrackedEvent --- */
-    // Do we need to report any unlocked achievements meeting a
-    // certain point threshold? Eg- New RA 100-point unlocks.
-    let scoringThresholdAchievements: MappedGameAchievement[] = [];
-    if (options?.trackEventOnScoringThreshold) {
-      scoringThresholdAchievements =
-        await this.#buildAchievementsListMeetingScoringThreshold(
-          existingUserGameProgress.id,
-          allEarnedAchievements,
-          options.trackEventOnScoringThreshold
-        );
-    }
-
-    const isCompletion =
-      allEarnedAchievements.length === allGameStoredAchievements.length;
-
-    // This block is all for creating TrackedEvent entities related to PSN.
-    let isPsnPlatinum: boolean | null = null;
-    let isPsnCompletion: boolean | null = null;
-    if (options?.isPsnTitle) {
-      const isPlatinumUnlockAlreadyStored =
-        await this.#getIsPsnPlatinumAlreadyUnlocked(
-          existingUserGameProgress.id
-        );
-
-      const doesAchievementsListContainPlatinumUnlock =
-        allEarnedAchievements.some(
-          (earnedAchievement) => earnedAchievement.psnTrophyKind === "Platinum"
-        );
-
-      isPsnPlatinum =
-        !isPlatinumUnlockAlreadyStored &&
-        doesAchievementsListContainPlatinumUnlock;
-
-      isPsnCompletion = this.#getIsPsnCompletion(
-        isCompletion,
-        allGameStoredAchievements
-      );
-    }
-    /** --- End detecting if we need to create a new TrackedEvent --- */
+    // Determine if this update should cause some TrackedEvent entities to be recorded.
+    const {
+      isCompletion,
+      isPsnCompletion,
+      isPsnPlatinum,
+      scoringThresholdAchievements
+    } = await this.#determineTrackedEventsForProgressUpdate(
+      existingUserGameProgress,
+      allGameStoredAchievements,
+      allEarnedAchievements,
+      options
+    );
 
     // Purge the list of achievements associated with the UserGameProgress entity.
     // It's easier and faster to do this than try to filter by what's already unlocked.
@@ -786,6 +743,106 @@ export class DbService implements OnModuleInit {
         gameProgressEntityId: userGameProgressId
       }
     });
+  }
+
+  async #determineTrackedEventsForProgressCreate(
+    serviceEarnedAchievements: MappedGameAchievement[],
+    allGameStoredAchievements: Array<
+      Pick<GameAchievement, "psnGroupId" | "psnTrophyKind">
+    >,
+    options?: Partial<{ trackEventOnScoringThreshold: number }>
+  ) {
+    const scoringThresholdAchievements: MappedGameAchievement[] = [];
+    if (options?.trackEventOnScoringThreshold) {
+      for (const earnedAchievement of serviceEarnedAchievements) {
+        if (
+          (earnedAchievement?.vanillaPoints ?? 0) >=
+          options.trackEventOnScoringThreshold
+        ) {
+          scoringThresholdAchievements.push(earnedAchievement);
+        }
+      }
+    }
+
+    // The set of conditionals below is used for recording TrackedEvent entities.
+    // In the real world, a bot can listen for new TrackedEvent entities and
+    // announce them, perhaps, in a Discord channel.
+    const isCompletion =
+      serviceEarnedAchievements.length === allGameStoredAchievements.length;
+
+    const isPsnPlatinum = serviceEarnedAchievements.some(
+      (achievement) => achievement.psnTrophyKind === "Platinum"
+    );
+
+    const isPsnCompletion = this.#getIsPsnCompletion(
+      isCompletion,
+      allGameStoredAchievements
+    );
+
+    return {
+      isCompletion,
+      isPsnCompletion,
+      isPsnPlatinum,
+      scoringThresholdAchievements
+    };
+  }
+
+  async #determineTrackedEventsForProgressUpdate(
+    existingUserGameProgress: Pick<UserGameProgress, "id">,
+    allGameStoredAchievements: Array<
+      Pick<GameAchievement, "psnGroupId" | "psnTrophyKind">
+    >,
+    allEarnedAchievements: MappedGameAchievement[],
+    options: Partial<{
+      trackEventOnScoringThreshold: number;
+      isPsnTitle: boolean;
+    }>
+  ) {
+    // Do we need to report any unlocked achievements meeting a
+    // certain point threshold? Eg- New RA 100-point unlocks.
+    let scoringThresholdAchievements: MappedGameAchievement[] = [];
+    if (options?.trackEventOnScoringThreshold) {
+      scoringThresholdAchievements =
+        await this.#buildAchievementsListMeetingScoringThreshold(
+          existingUserGameProgress.id,
+          allEarnedAchievements,
+          options.trackEventOnScoringThreshold
+        );
+    }
+
+    const isCompletion =
+      allEarnedAchievements.length === allGameStoredAchievements.length;
+
+    // This block is all for creating TrackedEvent entities related to PSN.
+    let isPsnPlatinum: boolean | null = null;
+    let isPsnCompletion: boolean | null = null;
+    if (options?.isPsnTitle) {
+      const isPlatinumUnlockAlreadyStored =
+        await this.#getIsPsnPlatinumAlreadyUnlocked(
+          existingUserGameProgress.id
+        );
+
+      const doesAchievementsListContainPlatinumUnlock =
+        allEarnedAchievements.some(
+          (earnedAchievement) => earnedAchievement.psnTrophyKind === "Platinum"
+        );
+
+      isPsnPlatinum =
+        !isPlatinumUnlockAlreadyStored &&
+        doesAchievementsListContainPlatinumUnlock;
+
+      isPsnCompletion = this.#getIsPsnCompletion(
+        isCompletion,
+        allGameStoredAchievements
+      );
+    }
+
+    return {
+      isCompletion,
+      isPsnCompletion,
+      isPsnPlatinum,
+      scoringThresholdAchievements
+    };
   }
 
   async #getCurrentAchievementsMeetingScoreThresholdForUserProgress(
