@@ -158,7 +158,7 @@ export class TrackedEventsService {
     storedGameId: string
   ) {
     this.#logger.log(
-      `Adding new ${TrackedEventKind.RA_NewMastery} event for ${trackedAccountId}:${storedGameId}`
+      `Adding new RA_NewMastery event for ${trackedAccountId}:${storedGameId}`
     );
 
     const canReportEvent = await this.#canReportEventsForTrackedAccount(
@@ -189,7 +189,7 @@ export class TrackedEventsService {
     this.eventStream$.next(newTrackedEvent);
 
     this.#logger.log(
-      `Added new ${TrackedEventKind.RA_NewMastery} event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
+      `Added new RA_NewMastery event for ${trackedAccountId}:${constructedEventData.game.name}:${storedGameId}`
     );
   }
 

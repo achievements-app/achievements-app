@@ -11,6 +11,7 @@ import {
 } from "@achievements-app/utils-model-generators";
 
 import { DbService } from "@/api/shared/db/db.service";
+import type { RetroachievementsNewMasteryEvent } from "@/api/shared/tracked-events/models";
 
 import { RetroachievementsModule } from "./retroachievements.module";
 import { RetroachievementsService } from "./retroachievements.service";
@@ -140,6 +141,77 @@ describe("Service: RetroachievementsService", () => {
     });
 
     expect(completeUserGameProgress.earnedAchievements.length).toEqual(2);
+  });
+
+  it("given a newly added user progress is also a completion, requests a new TrackedEvent to be created", async () => {
+    // ARRANGE
+    const addedUser = await createUser();
+
+    const trackedAccount = addedUser.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "RA"
+    );
+
+    await db.trackedAccount.update({
+      where: { id: trackedAccount.id },
+      data: { createdAt: new Date("2020-01-01") }
+    });
+
+    const mockServiceTitleIds = ["12345"];
+    const mockServiceTitle = generateRaGameInfoExtended(
+      {
+        id: Number(mockServiceTitleIds[0])
+      },
+      { achievementCount: 3 }
+    );
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValueOnce(mockServiceTitle);
+
+    const retroachievementsService = app.get(RetroachievementsService);
+
+    const addedGames =
+      await retroachievementsService.addRetroachievementsTitlesToDb(
+        mockServiceTitleIds
+      );
+
+    jest
+      .spyOn(dataService, "fetchUserGameProgress")
+      .mockResolvedValueOnce(
+        generateRaGameInfoAndUserProgress(
+          { id: Number(mockServiceTitleIds[0]) },
+          { earnedAchievementCount: 3 }
+        )
+      );
+
+    // ACT
+    await retroachievementsService.createRetroachievementsUserGameProgress(
+      addedGames[0].id,
+      trackedAccount,
+      mockServiceTitleIds[0]
+    );
+
+    // ASSERT
+    const foundTrackedEvent = await db.trackedEvent.findFirst();
+
+    expect(foundTrackedEvent).toBeTruthy();
+    expect(foundTrackedEvent.kind).toEqual("RA_NewMastery");
+    expect(foundTrackedEvent.trackedAccountId).toEqual(trackedAccount.id);
+
+    const eventData =
+      foundTrackedEvent.eventData as RetroachievementsNewMasteryEvent;
+
+    expect(eventData.game).toEqual({
+      name: mockServiceTitle.title,
+      consoleName: mockServiceTitle.consoleName,
+      serviceTitleId: String(mockServiceTitle.id)
+    });
+
+    expect(eventData.appUserName).toEqual(addedUser.userName);
+    expect(eventData.trackedAccountUserName).toEqual(
+      trackedAccount.accountUserName
+    );
+    expect(eventData.userMasteryCount).toEqual(1);
   });
 
   it("given a RetroAchievements username, can determine which of the user's games are missing and/or stored in our DB", async () => {
@@ -361,4 +433,8 @@ describe("Service: RetroachievementsService", () => {
     expect(updatedGames.length).toEqual(1);
     expect(updatedGames[0].name).toEqual("Game Name XYZ");
   });
+
+  it.todo(
+    "given a user has unlocked achievements for a game they already have stored progress on, can update their progress"
+  );
 });
