@@ -5,13 +5,19 @@ import { generateRaAchievement } from "./generateRaAchievement";
 
 export const generateRaGameInfoExtended = (
   gameInfoExtendedProps?: Partial<GameInfoExtended>,
-  options?: Partial<{ achievementCount: number }>
+  options?: Partial<{
+    achievementCount: number;
+    /** Sometimes we don't want to have achievements be worth 100 points under test. */
+    achievementPoints: number;
+  }>
 ): GameInfoExtended => {
   const generatedAchievements: Achievement[] = [];
 
   const achievementCount = options?.achievementCount ?? 10;
   for (let i = 0; i < achievementCount; i += 1) {
-    generatedAchievements.push(generateRaAchievement({ id: i }));
+    generatedAchievements.push(
+      generateRaAchievement({ id: i, points: options?.achievementPoints })
+    );
   }
 
   return {

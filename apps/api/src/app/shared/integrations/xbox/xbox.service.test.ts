@@ -10,6 +10,7 @@ import { createGame, createUser } from "@achievements-app/utils-db";
 import { generateMappedGame } from "@achievements-app/utils-model-generators";
 
 import { DbService } from "@/api/shared/db/db.service";
+import { XboxNewCompletionEvent } from "@/api/shared/tracked-events/models";
 
 import { mapXboxDeepGameInfoToCompleteGame } from "./utils/mapXboxDeepGameInfoToCompleteGame";
 import * as xboxApiMocks from "./utils/xboxApiMocks";
@@ -388,19 +389,15 @@ describe("Service: XboxService", () => {
       serviceTitleId: "12345"
     });
 
-    // TODO: Remove this once test flake is fixed.
-    const mockResponseGames = [
-      xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
-      xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
-      xboxApiMocks.generateXboxSanitizedTitleHistoryEntity({
-        titleId: Number(storedGame.serviceTitleId)
-      })
-    ];
-    console.log(mockResponseGames);
-
     jest
       .spyOn(dataService, "fetchCompleteTitleHistoryByXuid")
-      .mockResolvedValueOnce(mockResponseGames);
+      .mockResolvedValueOnce([
+        xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
+        xboxApiMocks.generateXboxSanitizedTitleHistoryEntity(),
+        xboxApiMocks.generateXboxSanitizedTitleHistoryEntity({
+          titleId: Number(storedGame.serviceTitleId)
+        })
+      ]);
 
     const xboxService = app.get(XboxService);
 
@@ -414,9 +411,6 @@ describe("Service: XboxService", () => {
       "mockXuid",
       "mockGamertag"
     );
-
-    // TODO: Remove this once test flake is fixed.
-    console.log(allUserGames);
 
     // ASSERT
     expect(allUserGames.length).toEqual(3);
@@ -486,5 +480,86 @@ describe("Service: XboxService", () => {
     expect(trackedAccountWithXuid.serviceAccountId).toEqual("mockXuid");
 
     expect(fetchXuidFromGamertagSpy).not.toHaveBeenCalled();
+  });
+
+  it("given a user completes a game, stores a corresponding TrackedEvent", async () => {
+    // ARRANGE
+    // First, set up a new user, game, and user progress for the game.
+    const user = await createUser();
+    const trackedAccount = user.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "XBOX"
+    );
+
+    await db.trackedAccount.update({
+      where: { id: trackedAccount.id },
+      data: { createdAt: new Date("2020-01-01") }
+    });
+
+    const mockServiceTitleIds = ["12345"];
+    const mockServiceTitle = xboxApiMocks.generateXboxDeepGameInfo(
+      {
+        titleId: mockServiceTitleIds[0]
+      },
+      { unearnedAchievementCount: 2, earnedAchievementCount: 1 }
+    );
+    const mockUserGames = [
+      generateMappedGame({ serviceTitleId: mockServiceTitleIds[0] })
+    ];
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValue(mockServiceTitle);
+
+    const xboxService = app.get(XboxService);
+
+    const addedGames = await xboxService.addXboxTitlesToDb(
+      "mockUserXuid",
+      mockServiceTitleIds,
+      mockUserGames
+    );
+
+    const newUserGameProgress = await xboxService.createXboxUserGameProgress(
+      addedGames[0],
+      trackedAccount
+    );
+
+    // We're going to change the response of the `fetchDeepGameInfo` call.
+    jest.resetAllMocks();
+
+    // Mark all the achievements for the title as earned/unlocked.
+    for (const achievement of mockServiceTitle.achievements) {
+      achievement.timeUnlocked = new Date("02-02-2023").toISOString();
+    }
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValue(mockServiceTitle);
+
+    // ACT
+    await xboxService.updateXboxUserGameProgress(
+      newUserGameProgress,
+      addedGames[0],
+      trackedAccount
+    );
+
+    // ASSERT
+    const foundTrackedEvent = await db.trackedEvent.findFirst();
+
+    expect(foundTrackedEvent).toBeTruthy();
+    expect(foundTrackedEvent.kind).toEqual("XBOX_NewCompletion");
+    expect(foundTrackedEvent.trackedAccountId).toEqual(trackedAccount.id);
+
+    const eventData = foundTrackedEvent.eventData as XboxNewCompletionEvent;
+
+    expect(eventData.game.name).toEqual(addedGames[0].name);
+    expect(eventData.game.serviceTitleId).toEqual(addedGames[0].serviceTitleId);
+
+    expect(eventData.totalGamePoints).toEqual(
+      mockServiceTitle.achievements[0].gamerscore +
+        mockServiceTitle.achievements[1].gamerscore +
+        mockServiceTitle.achievements[2].gamerscore
+    );
+
+    expect(eventData.userCompletionCount).toEqual(1);
   });
 });

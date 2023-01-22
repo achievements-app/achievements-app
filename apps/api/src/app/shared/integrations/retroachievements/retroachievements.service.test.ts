@@ -1,9 +1,12 @@
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { db } from "@achievements-app/data-access-db";
 import { createGame, createUser } from "@achievements-app/utils-db";
 import {
+  generateRaAchievement,
   generateRaGameInfoAndUserProgress,
   generateRaGameInfoExtended,
   generateRaUserGameCompletion,
@@ -11,7 +14,10 @@ import {
 } from "@achievements-app/utils-model-generators";
 
 import { DbService } from "@/api/shared/db/db.service";
-import type { RetroachievementsNewMasteryEvent } from "@/api/shared/tracked-events/models";
+import type {
+  RetroachievementsHundredPointUnlockEvent,
+  RetroachievementsNewMasteryEvent
+} from "@/api/shared/tracked-events/models";
 
 import { RetroachievementsModule } from "./retroachievements.module";
 import { RetroachievementsService } from "./retroachievements.service";
@@ -54,7 +60,7 @@ describe("Service: RetroachievementsService", () => {
       {
         id: Number(mockServiceTitleIds[0])
       },
-      { achievementCount: 1 }
+      { achievementCount: 1, achievementPoints: 5 }
     );
 
     jest
@@ -100,7 +106,7 @@ describe("Service: RetroachievementsService", () => {
       {
         id: Number(mockServiceTitleIds[0])
       },
-      { achievementCount: 3 }
+      { achievementCount: 3, achievementPoints: 5 }
     );
 
     jest
@@ -119,7 +125,7 @@ describe("Service: RetroachievementsService", () => {
       .mockResolvedValueOnce(
         generateRaGameInfoAndUserProgress(
           { id: Number(mockServiceTitleIds[0]) },
-          { earnedAchievementCount: 2 }
+          { earnedAchievementCount: 2, achievementPoints: 5 }
         )
       );
 
@@ -161,7 +167,7 @@ describe("Service: RetroachievementsService", () => {
       {
         id: Number(mockServiceTitleIds[0])
       },
-      { achievementCount: 3 }
+      { achievementCount: 3, achievementPoints: 10 }
     );
 
     jest
@@ -180,7 +186,7 @@ describe("Service: RetroachievementsService", () => {
       .mockResolvedValueOnce(
         generateRaGameInfoAndUserProgress(
           { id: Number(mockServiceTitleIds[0]) },
-          { earnedAchievementCount: 3 }
+          { earnedAchievementCount: 3, achievementPoints: 10 }
         )
       );
 
@@ -311,7 +317,7 @@ describe("Service: RetroachievementsService", () => {
       {
         id: Number(mockServiceTitleIds[0])
       },
-      { achievementCount: 3 }
+      { achievementCount: 3, achievementPoints: 5 }
     );
 
     jest
@@ -330,7 +336,7 @@ describe("Service: RetroachievementsService", () => {
       .mockResolvedValueOnce(
         generateRaGameInfoAndUserProgress(
           { id: Number(mockServiceTitleIds[0]) },
-          { earnedAchievementCount: 2 }
+          { earnedAchievementCount: 2, achievementPoints: 5 }
         )
       );
 
@@ -434,7 +440,308 @@ describe("Service: RetroachievementsService", () => {
     expect(updatedGames[0].name).toEqual("Game Name XYZ");
   });
 
-  it.todo(
-    "given a user has unlocked achievements for a game they already have stored progress on, can update their progress"
-  );
+  it("given a user has unlocked achievements for a game they already have stored progress on, can update their progress", async () => {
+    // ARRANGE
+    /* -- START: Create the initial user progress -- */
+    // They've earned 2 of 4 achievements.
+    const user = await createUser();
+    const trackedAccount = user.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "RA"
+    );
+
+    const mockServiceTitleIds = ["12345"];
+    const mockServiceTitle = generateRaGameInfoExtended(
+      {
+        id: Number(mockServiceTitleIds[0])
+      },
+      { achievementCount: 4, achievementPoints: 20 }
+    );
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValueOnce(mockServiceTitle);
+
+    const retroachievementsService = app.get(RetroachievementsService);
+
+    const addedGames =
+      await retroachievementsService.addRetroachievementsTitlesToDb(
+        mockServiceTitleIds
+      );
+
+    jest
+      .spyOn(dataService, "fetchUserGameProgress")
+      .mockResolvedValueOnce(
+        generateRaGameInfoAndUserProgress(
+          { id: Number(mockServiceTitleIds[0]) },
+          { earnedAchievementCount: 2, achievementPoints: 20 }
+        )
+      );
+
+    const newUserGameProgress =
+      await retroachievementsService.createRetroachievementsUserGameProgress(
+        addedGames[0].id,
+        trackedAccount,
+        mockServiceTitleIds[0]
+      );
+    /* -- END: Create the initial user progress */
+
+    // ACT
+    // Now we'll have them unlock 1 more achievement.
+    jest
+      .spyOn(dataService, "fetchUserGameProgress")
+      .mockResolvedValueOnce(
+        generateRaGameInfoAndUserProgress(
+          { id: Number(mockServiceTitleIds[0]) },
+          { earnedAchievementCount: 3, achievementPoints: 20 }
+        )
+      );
+
+    await retroachievementsService.updateRetroachievementsUserGameProgress(
+      newUserGameProgress,
+      addedGames[0].id,
+      trackedAccount,
+      mockServiceTitleIds[0]
+    );
+
+    // ASSERT
+    const foundUserGameProgress = await db.userGameProgress.findFirst({
+      select: { earnedAchievements: true }
+    });
+
+    expect(foundUserGameProgress).toBeTruthy();
+    expect(foundUserGameProgress.earnedAchievements).toHaveLength(3);
+  });
+
+  it("given a user has mastered a game they have in progress, tracks an event for the mastery", async () => {
+    // ARRANGE
+    /* -- START: Create the initial user progress -- */
+    // They've earned 1 of 2 achievements.
+    const user = await createUser();
+
+    const trackedAccount = user.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "RA"
+    );
+
+    await db.trackedAccount.update({
+      where: { id: trackedAccount.id },
+      data: { createdAt: new Date("2020-01-01") }
+    });
+
+    const mockServiceTitleIds = ["12345"];
+    const mockOriginalAchievements = [
+      generateRaAchievement({ id: 0, points: 10 }),
+      generateRaAchievement({ id: 1, points: 20 })
+    ];
+
+    const mockServiceTitle = generateRaGameInfoExtended({
+      id: Number(mockServiceTitleIds[0]),
+      achievements: mockOriginalAchievements
+    });
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValueOnce(mockServiceTitle);
+
+    const retroachievementsService = app.get(RetroachievementsService);
+
+    const addedGames =
+      await retroachievementsService.addRetroachievementsTitlesToDb(
+        mockServiceTitleIds
+      );
+
+    jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
+      generateRaGameInfoAndUserProgress({
+        id: Number(mockServiceTitleIds[0]),
+        achievements: [
+          generateRaAchievement({
+            ...mockOriginalAchievements[0],
+            isAwarded: 1,
+            dateEarnedHardcore: new Date("2020-01-01")
+          }),
+          generateRaAchievement({
+            ...mockOriginalAchievements[1],
+            isAwarded: 0
+          })
+        ]
+      })
+    );
+
+    const newUserGameProgress =
+      await retroachievementsService.createRetroachievementsUserGameProgress(
+        addedGames[0].id,
+        trackedAccount,
+        mockServiceTitleIds[0]
+      );
+    /* -- END: Create the initial user progress */
+
+    // ACT
+    // Now we'll have them unlock 1 more achievement.
+    const mockAllEarnedAchievementsList = [
+      generateRaAchievement({
+        ...mockOriginalAchievements[0],
+        isAwarded: 1,
+        dateEarnedHardcore: new Date("2020-01-01")
+      }),
+      generateRaAchievement({
+        ...mockOriginalAchievements[1],
+        isAwarded: 1,
+        dateEarnedHardcore: new Date("2020-01-01")
+      })
+    ];
+
+    jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
+      generateRaGameInfoAndUserProgress({
+        id: Number(mockServiceTitleIds[0]),
+        achievements: mockAllEarnedAchievementsList
+      })
+    );
+
+    await retroachievementsService.updateRetroachievementsUserGameProgress(
+      newUserGameProgress,
+      addedGames[0].id,
+      trackedAccount,
+      mockServiceTitleIds[0]
+    );
+
+    // ASSERT
+    const foundTrackedEvent = await db.trackedEvent.findFirst();
+
+    expect(foundTrackedEvent).toBeTruthy();
+    expect(foundTrackedEvent.kind).toEqual("RA_NewMastery");
+    expect(foundTrackedEvent.trackedAccountId).toEqual(trackedAccount.id);
+
+    const eventData =
+      foundTrackedEvent.eventData as RetroachievementsNewMasteryEvent;
+
+    expect(eventData.game.name).toEqual(addedGames[0].name);
+    expect(eventData.game.consoleName).toEqual(addedGames[0].gamePlatforms[0]);
+
+    expect(eventData.hardestAchievement.name).toEqual(
+      mockAllEarnedAchievementsList[1].title
+    );
+    expect(eventData.hardestAchievement.points).toEqual(
+      mockAllEarnedAchievementsList[1].points
+    );
+  });
+
+  it("given a user has earned a 100 point achievement for a game they have in progress, tracks an event for the 100 point unlock", async () => {
+    // ARRANGE
+    /* -- START: Create the initial user progress -- */
+    // They've earned 1 of 3 achievements.
+    const user = await createUser();
+
+    const trackedAccount = user.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "RA"
+    );
+
+    await db.trackedAccount.update({
+      where: { id: trackedAccount.id },
+      data: { createdAt: new Date("2020-01-01") }
+    });
+
+    const mockServiceTitleIds = ["12345"];
+    const mockOriginalAchievements = [
+      generateRaAchievement({ id: 0, points: 10 }),
+      generateRaAchievement({ id: 1, points: 100 }),
+      generateRaAchievement({ id: 2, points: 50 })
+    ];
+
+    const mockServiceTitle = generateRaGameInfoExtended({
+      id: Number(mockServiceTitleIds[0]),
+      achievements: mockOriginalAchievements
+    });
+
+    jest
+      .spyOn(dataService, "fetchDeepGameInfo")
+      .mockResolvedValueOnce(mockServiceTitle);
+
+    const retroachievementsService = app.get(RetroachievementsService);
+
+    const addedGames =
+      await retroachievementsService.addRetroachievementsTitlesToDb(
+        mockServiceTitleIds
+      );
+
+    jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
+      generateRaGameInfoAndUserProgress({
+        id: Number(mockServiceTitleIds[0]),
+        achievements: [
+          generateRaAchievement({
+            ...mockOriginalAchievements[0],
+            isAwarded: 1,
+            dateEarnedHardcore: new Date("2020-01-01")
+          }),
+          generateRaAchievement({
+            ...mockOriginalAchievements[1],
+            isAwarded: 0
+          }),
+          generateRaAchievement({
+            ...mockOriginalAchievements[2],
+            isAwarded: 0
+          })
+        ]
+      })
+    );
+
+    const newUserGameProgress =
+      await retroachievementsService.createRetroachievementsUserGameProgress(
+        addedGames[0].id,
+        trackedAccount,
+        mockServiceTitleIds[0]
+      );
+    /* -- END: Create the initial user progress */
+
+    // ACT
+    // Now we'll have them unlock 1 more achievement.
+    const mockAllEarnedAchievementsList = [
+      generateRaAchievement({
+        ...mockOriginalAchievements[0],
+        isAwarded: 1,
+        dateEarnedHardcore: new Date("2020-01-01")
+      }),
+      generateRaAchievement({
+        ...mockOriginalAchievements[1],
+        isAwarded: 1,
+        dateEarnedHardcore: new Date("2020-01-01")
+      }),
+      generateRaAchievement({ ...mockOriginalAchievements[2], isAwarded: 0 })
+    ];
+
+    jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
+      generateRaGameInfoAndUserProgress({
+        id: Number(mockServiceTitleIds[0]),
+        achievements: mockAllEarnedAchievementsList
+      })
+    );
+
+    await retroachievementsService.updateRetroachievementsUserGameProgress(
+      newUserGameProgress,
+      addedGames[0].id,
+      trackedAccount,
+      mockServiceTitleIds[0]
+    );
+
+    // ASSERT
+    const foundTrackedEvent = await db.trackedEvent.findFirst();
+
+    expect(foundTrackedEvent).toBeTruthy();
+    expect(foundTrackedEvent.kind).toEqual("RA_HundredPointAchievementUnlock");
+    expect(foundTrackedEvent.trackedAccountId).toEqual(trackedAccount.id);
+
+    const eventData =
+      foundTrackedEvent.eventData as RetroachievementsHundredPointUnlockEvent;
+
+    expect(eventData.game.name).toEqual(addedGames[0].name);
+    expect(eventData.game.consoleName).toEqual(addedGames[0].gamePlatforms[0]);
+
+    expect(eventData.achievement.name).toEqual(
+      mockAllEarnedAchievementsList[1].title
+    );
+    expect(eventData.achievement.description).toEqual(
+      mockAllEarnedAchievementsList[1].description
+    );
+    expect(eventData.achievement.serviceAchievementId).toEqual(
+      String(mockAllEarnedAchievementsList[1].id)
+    );
+  });
 });

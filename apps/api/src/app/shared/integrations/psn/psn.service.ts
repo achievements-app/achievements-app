@@ -225,7 +225,8 @@ export class PsnService {
         const { isPsnCompletion, isPsnPlatinum } =
           await this.dbService.updateExistingUserGameProgress(
             existingUserGameProgress,
-            earnedAchievements
+            earnedAchievements,
+            { isPsnTitle: true }
           );
 
         hasNewCompletion = isPsnCompletion;

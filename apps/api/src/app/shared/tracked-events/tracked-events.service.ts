@@ -4,10 +4,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import dayjs from "dayjs";
 import { Subject } from "rxjs";
 
-import {
-  type TrackedEvent,
-  TrackedEventKind
-} from "@achievements-app/data-access-db";
+import { type TrackedEvent } from "@achievements-app/data-access-db";
 
 import { DbService } from "@/api/shared/db/db.service";
 
@@ -105,7 +102,7 @@ export class TrackedEventsService {
     reportedTotalEarnerCount: number
   ) {
     this.#logger.log(
-      `Adding new ${TrackedEventKind.RA_HundredPointAchievementUnlock} event for ${trackedAccountId}:${storedGameId}`
+      `Adding new RA_HundredPointAchievementUnlock event for ${trackedAccountId}:${storedGameId}`
     );
 
     const storedAchievement = await this.dbService.db.gameAchievement.findFirst(
@@ -144,7 +141,7 @@ export class TrackedEventsService {
     this.eventStream$.next(newTrackedEvent);
 
     this.#logger.log(
-      `Added new ${TrackedEventKind.RA_HundredPointAchievementUnlock} event for ${trackedAccountId}:${storedGameId}:${storedAchievement.id}`
+      `Added new RA_HundredPointAchievementUnlock event for ${trackedAccountId}:${storedGameId}:${storedAchievement.id}`
     );
   }
 

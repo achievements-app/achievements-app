@@ -8,6 +8,10 @@ import { generateMappedGame } from "@achievements-app/utils-model-generators";
 
 import { DbService } from "@/api/shared/db/db.service";
 
+import {
+  PsnNewCompletionEvent,
+  PsnNewPlatinumEvent
+} from "../../tracked-events/models";
 import { PsnModule } from "./psn.module";
 import { PsnService } from "./psn.service";
 import { PsnDataService } from "./psn-data.service";
@@ -334,5 +338,204 @@ describe("Service: PsnService", () => {
     );
 
     expect(fetchAccountIdFromUserNameSpy).not.toHaveBeenCalled();
+  });
+
+  it("given a user earns a Platinum trophy, stores a corresponding TrackedEvent", async () => {
+    // ARRANGE
+    // First, add the game and some initial user progress to our DB.
+    const addedUser = await createUser();
+    const trackedAccount = addedUser.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "PSN"
+    );
+
+    await db.trackedAccount.update({
+      where: { id: trackedAccount.id },
+      data: { createdAt: new Date("2020-01-01") }
+    });
+
+    const mockMappedGame = generateMappedGame({
+      gamingService: "PSN",
+      psnServiceName: "trophy"
+    });
+
+    const mockTrophies = [
+      psnApiMocks.generateTitleThinTrophy({
+        trophyId: 0,
+        trophyType: "bronze",
+        trophyGroupId: "default"
+      }),
+      psnApiMocks.generateTitleThinTrophy({
+        trophyId: 1,
+        trophyType: "platinum",
+        trophyGroupId: "default"
+      })
+    ];
+
+    jest.spyOn(dataService, "fetchAllTitleTrophies").mockResolvedValue(
+      psnApiMocks.generateTitleTrophiesResponse({
+        trophies: mockTrophies
+      })
+    );
+
+    jest
+      .spyOn(dataService, "fetchUserEarnedTrophiesForTitle")
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse({
+          trophies: [
+            {
+              ...mockTrophies[0],
+              earned: true,
+              trophyEarnedRate: "10"
+            },
+            { ...mockTrophies[1], earned: false, trophyEarnedRate: "2" }
+          ]
+        })
+      ) // The 2nd call will show all trophies as earned.
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse({
+          trophies: [
+            {
+              ...mockTrophies[0],
+              earned: true,
+              trophyEarnedRate: "10"
+            },
+            {
+              ...mockTrophies[1],
+              earned: true,
+              trophyEarnedRate: "2"
+            }
+          ]
+        })
+      );
+
+    const psnService = app.get(PsnService);
+
+    await psnService.addPsnTitleAndProgressToDb(trackedAccount, mockMappedGame);
+
+    // ACT
+    await psnService.updatePsnTitleAndProgressInDb(
+      trackedAccount,
+      mockMappedGame
+    );
+
+    // ASSERT
+    const foundTrackedEvent = await db.trackedEvent.findFirst();
+
+    expect(foundTrackedEvent).toBeTruthy();
+    expect(foundTrackedEvent.kind).toEqual("PSN_NewPlatinum");
+
+    const eventData = foundTrackedEvent.eventData as PsnNewPlatinumEvent;
+
+    expect(eventData.userPlatinumCount).toEqual(1);
+
+    expect(eventData.game.name).toEqual(mockMappedGame.name);
+
+    expect(eventData.hardestAchievement.name).toEqual(
+      mockTrophies[0].trophyName
+    );
+    expect(eventData.hardestAchievement.description).toEqual(
+      mockTrophies[0].trophyDetail
+    );
+  });
+
+  it("given the user completes a game, stores a corresponding TrackedEvent", async () => {
+    // ARRANGE
+    // First, add the game and some initial user progress to our DB.
+    const addedUser = await createUser();
+    const trackedAccount = addedUser.trackedAccounts.find(
+      (trackedAccount) => trackedAccount.gamingService === "PSN"
+    );
+
+    await db.trackedAccount.update({
+      where: { id: trackedAccount.id },
+      data: { createdAt: new Date("2020-01-01") }
+    });
+
+    const mockMappedGame = generateMappedGame({
+      gamingService: "PSN",
+      psnServiceName: "trophy"
+    });
+
+    const mockTrophies = [
+      psnApiMocks.generateTitleThinTrophy({
+        trophyId: 0,
+        trophyType: "bronze",
+        trophyGroupId: "default"
+      }),
+      psnApiMocks.generateTitleThinTrophy({
+        trophyId: 1,
+        trophyType: "gold",
+        trophyGroupId: "default"
+      })
+    ];
+
+    jest.spyOn(dataService, "fetchAllTitleTrophies").mockResolvedValue(
+      psnApiMocks.generateTitleTrophiesResponse({
+        trophies: mockTrophies
+      })
+    );
+
+    jest
+      .spyOn(dataService, "fetchUserEarnedTrophiesForTitle")
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse({
+          trophies: [
+            {
+              ...mockTrophies[0],
+              earned: true,
+              trophyEarnedRate: "10"
+            },
+            { ...mockTrophies[1], earned: false, trophyEarnedRate: "5" }
+          ]
+        })
+      ) // The 2nd call will show all trophies as earned.
+      .mockResolvedValueOnce(
+        psnApiMocks.generateUserTrophiesEarnedForTitleResponse({
+          trophies: [
+            {
+              ...mockTrophies[0],
+              earned: true,
+              trophyEarnedRate: "10"
+            },
+            {
+              ...mockTrophies[1],
+              earned: true,
+              trophyEarnedRate: "5"
+            }
+          ]
+        })
+      );
+
+    const psnService = app.get(PsnService);
+
+    await psnService.addPsnTitleAndProgressToDb(trackedAccount, mockMappedGame);
+
+    // ACT
+    await psnService.updatePsnTitleAndProgressInDb(
+      trackedAccount,
+      mockMappedGame
+    );
+
+    // ASSERT
+    const foundTrackedEvent = await db.trackedEvent.findFirst();
+
+    expect(foundTrackedEvent).toBeTruthy();
+    expect(foundTrackedEvent.kind).toEqual("PSN_NewCompletion");
+
+    const eventData = foundTrackedEvent.eventData as PsnNewCompletionEvent;
+
+    expect(eventData.userCompletionCount).toEqual(1);
+
+    expect(eventData.game.hasPlatinum).toEqual(false);
+    expect(eventData.game.name).toEqual(mockMappedGame.name);
+    expect(eventData.game.trophyGroupCount).toEqual(1);
+
+    expect(eventData.hardestAchievement.name).toEqual(
+      mockTrophies[1].trophyName
+    );
+    expect(eventData.hardestAchievement.description).toEqual(
+      mockTrophies[1].trophyDetail
+    );
+    expect(eventData.hardestAchievement.kind).toEqual("gold");
   });
 });

@@ -15,14 +15,17 @@ export const generateRaAchievement = (
       }
     : {};
 
+  const points = achievementProps?.points ?? faker.datatype.number(100);
+  const trueRatio = points * 2;
+
   return {
+    points,
+    trueRatio,
     id: faker.datatype.number(100_000),
     numAwarded: faker.datatype.number(1000),
     numAwardedHardcore: faker.datatype.number(1000),
     title: faker.random.words(3),
     description: faker.random.words(10),
-    points: faker.datatype.number(100),
-    trueRatio: faker.datatype.number(1000),
     author: faker.internet.userName(),
     dateModified: faker.date.recent(),
     dateCreated: faker.date.recent(),

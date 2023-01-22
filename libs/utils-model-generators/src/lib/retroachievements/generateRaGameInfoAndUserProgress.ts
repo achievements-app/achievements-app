@@ -8,14 +8,21 @@ import { generateRaAchievement } from "./generateRaAchievement";
 
 export const generateRaGameInfoAndUserProgress = (
   gameInfoAndUserProgressProps?: Partial<GameInfoAndUserProgress>,
-  options?: Partial<{ earnedAchievementCount: number }>
+  options?: Partial<{
+    earnedAchievementCount: number;
+    /** Sometimes we don't want to have achievements be worth 100 points under test. */
+    achievementPoints: number;
+  }>
 ): GameInfoAndUserProgress => {
   const generatedAchievements: Achievement[] = [];
 
   const achievementCount = options?.earnedAchievementCount ?? 5;
   for (let i = 0; i < achievementCount; i += 1) {
     generatedAchievements.push(
-      generateRaAchievement({ id: i }, { isEarned: true })
+      generateRaAchievement(
+        { id: i, points: options?.achievementPoints },
+        { isEarned: true }
+      )
     );
   }
 
