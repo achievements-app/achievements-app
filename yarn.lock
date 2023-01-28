@@ -1259,6 +1259,13 @@
   resolved "https://registry.yarnpkg.com/@redis/time-series/-/time-series-1.0.4.tgz#af85eb080f6934580e4d3b58046026b6c2b18717"
   integrity sha512-ThUIgo2U/g7cCuZavucQTQzA9g9JbDDY2f64u3AbAoz/8vE2lt2U37LamDUVChhaDA3IRT9R6VvJwqnUfTJzng==
 
+"@retroachievements/api@^1.0.0-rc.1":
+  version "1.0.0-rc.1"
+  resolved "https://registry.yarnpkg.com/@retroachievements/api/-/api-1.0.0-rc.1.tgz#b69ab306031c2d5ff6c6ea3630b03dfe6af536f7"
+  integrity sha512-e7aQgFLcWbVCkTCxr34d0dzdtPlgxGY7KkxMIRSKtWq9YeEAFkUPTwaTgqM5oViGMbmffG7mDvGJYKGkqkWwcQ==
+  dependencies:
+    isomorphic-unfetch "^3.1.0"
+
 "@sentry/core@7.28.1":
   version "7.28.1"
   resolved "https://registry.yarnpkg.com/@sentry/core/-/core-7.28.1.tgz#c712ce17469b18b01606108817be24a99ed2116e"

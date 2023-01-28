@@ -1,5 +1,6 @@
 /* eslint-disable security/detect-object-injection */
 
+import { buildAuthorization } from "@retroachievements/api";
 import { RateLimiter } from "limiter";
 import { RetroAchievementsClient } from "retroachievements-js";
 
@@ -16,6 +17,10 @@ const buildClientInstance = (
   apiKeyEnvKey += credentialsIndex;
 
   return {
+    authObject: buildAuthorization({
+      userName: process.env[userNameEnvKey],
+      webApiKey: process.env[apiKeyEnvKey]
+    }),
     client: new RetroAchievementsClient({
       userName: process.env[userNameEnvKey],
       apiKey: process.env[apiKeyEnvKey]

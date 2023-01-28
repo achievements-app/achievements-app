@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import * as raApi from "@retroachievements/api";
 
 import type { RetroachievementsClientInstance } from "./models";
 import { initializeRetroAchievementsClientPool } from "./utils/initializeRetroAchievementsClientPool";
@@ -36,10 +37,10 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return await clientInstance.client.getUserRecentlyPlayedGames(
-      targetUserName,
-      50
-    );
+    return await raApi.getUserRecentlyPlayedGames(clientInstance.authObject, {
+      userName: targetUserName,
+      count: 50
+    });
   }
 
   async fetchUserGameProgress(
@@ -61,15 +62,9 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getUserPoints(targetUserName);
-  }
-
-  async fetchUserSummary(targetUserName: string) {
-    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
-
-    await clientInstance.limiter.removeTokens(1);
-
-    return clientInstance.client.getUserSummary(targetUserName);
+    return raApi.getUserPoints(clientInstance.authObject, {
+      userName: targetUserName
+    });
   }
 
   // We use a very naive load balancing strategy here.

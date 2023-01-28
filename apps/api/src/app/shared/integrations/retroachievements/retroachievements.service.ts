@@ -19,7 +19,7 @@ import { RetroachievementsDataService } from "./retroachievements-data.service";
 import { mapAchievementToMappedGameAchievement } from "./utils/mapAchievementToMappedGameAchievement";
 import { mapGameInfoExtendedToCompleteGame } from "./utils/mapGameInfoExtendedToCompleteGame";
 import { mapUserGameCompletionToStoredGame } from "./utils/mapUserGameCompletionToStoredGame";
-import { mapUserRecentlyPlayedGameToMappedGame } from "./utils/mapUserRecentlyPlayedGameToMappedGame";
+import { mapUserRecentlyPlayedGameEntityToMappedGame } from "./utils/mapUserRecentlyPlayedGameEntityToMappedGame";
 
 @Injectable()
 export class RetroachievementsService {
@@ -321,7 +321,9 @@ export class RetroachievementsService {
       (recentGame) => recentGame.numAchievedHardcore > 0
     );
 
-    return onlyWithSomeProgress.map(mapUserRecentlyPlayedGameToMappedGame);
+    return onlyWithSomeProgress.map(
+      mapUserRecentlyPlayedGameEntityToMappedGame
+    );
   }
 
   async #fetchUserGameUnlockedAchievements(
