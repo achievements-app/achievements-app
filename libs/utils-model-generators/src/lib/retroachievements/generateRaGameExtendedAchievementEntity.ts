@@ -1,15 +1,13 @@
 import { faker } from "@faker-js/faker";
-import type { GameExtendedAchievementEntityWithUserProgress } from "@retroachievements/api";
+import type { GameExtendedAchievementEntity } from "@retroachievements/api";
 
-export const generateGameExtendedAchievementEntityWithUserProgress = (
-  props?: Partial<GameExtendedAchievementEntityWithUserProgress>
-): GameExtendedAchievementEntityWithUserProgress => {
+export const generateRaGameExtendedAchievementEntity = (
+  props?: Partial<GameExtendedAchievementEntity>
+): GameExtendedAchievementEntity => {
   return {
     author: faker.random.words(2),
     badgeName: faker.random.word(),
     dateCreated: faker.date.past(1).toISOString(),
-    dateEarned: faker.date.past(1).toISOString(),
-    dateEarnedHardcore: faker.date.past(1).toISOString(),
     dateModified: faker.date.past(1).toISOString(),
     description: faker.random.words(8),
     displayOrder: faker.datatype.number(100),

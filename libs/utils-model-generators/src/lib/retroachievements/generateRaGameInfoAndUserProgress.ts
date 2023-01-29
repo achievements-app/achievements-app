@@ -5,7 +5,7 @@ import type {
 } from "@retroachievements/api";
 
 import { convertAchievementsListToMap } from "./convertAchievementsListToMap";
-import { generateGameExtendedAchievementEntityWithUserProgress } from "./generateGameExtendedAchievementWithUserProgress";
+import { generateRaGameExtendedAchievementEntityWithUserProgress } from "./generateRaGameExtendedAchievementWithUserProgress";
 
 export const generateRaGameInfoAndUserProgress = (
   props?: Partial<GameInfoAndUserProgress>,
@@ -21,9 +21,10 @@ export const generateRaGameInfoAndUserProgress = (
   const achievementCount = options?.earnedAchievementCount ?? 5;
   for (let i = 0; i < achievementCount; i += 1) {
     generatedAchievements.push(
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         id: i,
         points: options?.achievementPoints
+        // a dateEarnedHardcore will automatically be generated marked this as earned
       })
     );
   }

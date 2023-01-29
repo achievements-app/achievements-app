@@ -2,15 +2,15 @@
 
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { convertAchievementsListToMap } from "libs/utils-model-generators/src/lib/retroachievements/convertAchievementsListToMap";
-import { generateGameExtendedAchievementEntityWithUserProgress } from "libs/utils-model-generators/src/lib/retroachievements/generateGameExtendedAchievementWithUserProgress";
 
 import { db } from "@achievements-app/data-access-db";
 import { createGame, createUser } from "@achievements-app/utils-db";
 import {
+  convertAchievementsListToMap,
   generateRaAchievement,
+  generateRaGameExtended,
+  generateRaGameExtendedAchievementEntityWithUserProgress,
   generateRaGameInfoAndUserProgress,
-  generateRaGameInfoExtended,
   generateRaUserGameCompletion,
   generateRaUserRecentlyPlayedGame
 } from "@achievements-app/utils-model-generators";
@@ -58,7 +58,7 @@ describe("Service: RetroachievementsService", () => {
   it("given a set of title IDs, can fetch the titles from RetroAchievements and store their metadatas in our DB", async () => {
     // ARRANGE
     const mockServiceTitleIds = ["12345"];
-    const mockServiceTitle = generateRaGameInfoExtended(
+    const mockServiceTitle = generateRaGameExtended(
       {
         id: Number(mockServiceTitleIds[0])
       },
@@ -88,7 +88,7 @@ describe("Service: RetroachievementsService", () => {
     expect(addedGame.serviceTitleId).toEqual(mockServiceTitleIds[0]);
     expect(addedGame.gamingService).toEqual("RA");
     expect(addedGame.achievements.length).toEqual(
-      mockServiceTitle.achievements.length
+      Object.keys(mockServiceTitle.achievements).length
     );
 
     expect(addedGame.achievements[0].vanillaPoints).toEqual(
@@ -104,7 +104,7 @@ describe("Service: RetroachievementsService", () => {
     );
 
     const mockServiceTitleIds = ["12345"];
-    const mockServiceTitle = generateRaGameInfoExtended(
+    const mockServiceTitle = generateRaGameExtended(
       {
         id: Number(mockServiceTitleIds[0])
       },
@@ -165,7 +165,7 @@ describe("Service: RetroachievementsService", () => {
     });
 
     const mockServiceTitleIds = ["12345"];
-    const mockServiceTitle = generateRaGameInfoExtended(
+    const mockServiceTitle = generateRaGameExtended(
       {
         id: Number(mockServiceTitleIds[0])
       },
@@ -315,7 +315,7 @@ describe("Service: RetroachievementsService", () => {
     );
 
     const mockServiceTitleIds = ["12345"];
-    const mockServiceTitle = generateRaGameInfoExtended(
+    const mockServiceTitle = generateRaGameExtended(
       {
         id: Number(mockServiceTitleIds[0])
       },
@@ -420,7 +420,7 @@ describe("Service: RetroachievementsService", () => {
       name: "Game Name ABC" // We're going to change this via our update.
     });
 
-    const mockServiceTitle = generateRaGameInfoExtended({
+    const mockServiceTitle = generateRaGameExtended({
       id: Number(storedGame.serviceTitleId),
       title: "Game Name XYZ"
     });
@@ -452,7 +452,7 @@ describe("Service: RetroachievementsService", () => {
     );
 
     const mockServiceTitleIds = ["12345"];
-    const mockServiceTitle = generateRaGameInfoExtended(
+    const mockServiceTitle = generateRaGameExtended(
       {
         id: Number(mockServiceTitleIds[0])
       },
@@ -535,9 +535,9 @@ describe("Service: RetroachievementsService", () => {
       generateRaAchievement({ id: 1, points: 20 })
     ];
 
-    const mockServiceTitle = generateRaGameInfoExtended({
+    const mockServiceTitle = generateRaGameExtended({
       id: Number(mockServiceTitleIds[0]),
-      achievements: mockOriginalAchievements
+      achievements: convertAchievementsListToMap(mockOriginalAchievements)
     });
 
     jest
@@ -552,11 +552,11 @@ describe("Service: RetroachievementsService", () => {
       );
 
     const mockAchievements = [
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         ...(mockOriginalAchievements[0] as any),
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         ...(mockOriginalAchievements[1] as any)
       })
     ];
@@ -579,11 +579,11 @@ describe("Service: RetroachievementsService", () => {
     // ACT
     // Now we'll have them unlock 1 more achievement.
     const mockAllEarnedAchievementsList = [
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         ...(mockOriginalAchievements[0] as any),
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         ...(mockOriginalAchievements[1] as any),
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       })
@@ -648,9 +648,9 @@ describe("Service: RetroachievementsService", () => {
       generateRaAchievement({ id: 2, points: 10 })
     ];
 
-    const mockServiceTitle = generateRaGameInfoExtended({
+    const mockServiceTitle = generateRaGameExtended({
       id: Number(mockServiceTitleIds[0]),
-      achievements: mockOriginalAchievements
+      achievements: convertAchievementsListToMap(mockOriginalAchievements)
     });
 
     jest
@@ -665,21 +665,21 @@ describe("Service: RetroachievementsService", () => {
       );
 
     const mockAchievements = [
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         id: mockOriginalAchievements[0].id,
         title: mockOriginalAchievements[0].title,
         description: mockOriginalAchievements[0].description,
         points: 10,
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         id: mockOriginalAchievements[1].id,
         title: mockOriginalAchievements[1].title,
         description: mockOriginalAchievements[1].description,
         dateEarnedHardcore: undefined,
         points: 100
       }),
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         id: mockOriginalAchievements[2].id,
         title: mockOriginalAchievements[2].title,
         description: mockOriginalAchievements[2].description,
@@ -706,7 +706,7 @@ describe("Service: RetroachievementsService", () => {
     // ACT
     // Now we'll have them unlock 1 more achievement.
     const mockAllEarnedAchievementsList = [
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         id: mockOriginalAchievements[0].id,
         title: mockOriginalAchievements[0].title,
         description: mockOriginalAchievements[0].description,
@@ -714,14 +714,14 @@ describe("Service: RetroachievementsService", () => {
         points: 10,
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         id: mockOriginalAchievements[1].id,
         title: mockOriginalAchievements[1].title,
         description: mockOriginalAchievements[1].description,
         dateEarnedHardcore: new Date("2020-01-01").toISOString(),
         points: 100
       }),
-      generateGameExtendedAchievementEntityWithUserProgress({
+      generateRaGameExtendedAchievementEntityWithUserProgress({
         id: mockOriginalAchievements[2].id,
         title: mockOriginalAchievements[2].title,
         description: mockOriginalAchievements[2].description,

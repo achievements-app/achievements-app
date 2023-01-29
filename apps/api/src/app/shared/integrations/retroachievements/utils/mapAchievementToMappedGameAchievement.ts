@@ -1,16 +1,18 @@
-import type { GameExtendedAchievementEntityWithUserProgress } from "@retroachievements/api";
-import type { Achievement } from "retroachievements-js";
+import type {
+  GameExtendedAchievementEntity,
+  GameExtendedAchievementEntityWithUserProgress
+} from "@retroachievements/api";
 
 import type { MappedGameAchievement } from "@achievements-app/data-access-common-models";
 
 export const mapAchievementToMappedGameAchievement = (
-  achievement: Achievement | GameExtendedAchievementEntityWithUserProgress
+  achievement:
+    | GameExtendedAchievementEntity
+    | GameExtendedAchievementEntityWithUserProgress
 ): MappedGameAchievement => {
   let earnedOn: string | undefined;
-  if (typeof achievement?.dateEarnedHardcore === "string") {
+  if ("dateEarnedHardcore" in achievement && achievement?.dateEarnedHardcore) {
     earnedOn = achievement.dateEarnedHardcore;
-  } else if (achievement?.dateEarnedHardcore) {
-    earnedOn = achievement.dateEarnedHardcore.toISOString();
   }
 
   return {

@@ -27,9 +27,9 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getExtendedGameInfoByGameId(
-      Number(serviceTitleId)
-    );
+    return raApi.getGameExtended(clientInstance.authObject, {
+      gameId: Number(serviceTitleId)
+    });
   }
 
   async fetchRecentUserGames(targetUserName: string) {
