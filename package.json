@@ -38,7 +38,6 @@
     "psn-api": "^2.8.3",
     "redis": "^4.5.1",
     "reflect-metadata": "^0.1.13",
-    "retroachievements-js": "^1.4.0",
     "rxjs": "^7.0.0",
     "tslib": "^2.3.0",
     "urlcat": "2.0.4"

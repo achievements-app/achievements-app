@@ -2,7 +2,6 @@
 
 import { buildAuthorization } from "@retroachievements/api";
 import { RateLimiter } from "limiter";
-import { RetroAchievementsClient } from "retroachievements-js";
 
 import type { RetroachievementsClientInstance } from "../models";
 
@@ -20,10 +19,6 @@ const buildClientInstance = (
     authObject: buildAuthorization({
       userName: process.env[userNameEnvKey],
       webApiKey: process.env[apiKeyEnvKey]
-    }),
-    client: new RetroAchievementsClient({
-      userName: process.env[userNameEnvKey],
-      apiKey: process.env[apiKeyEnvKey]
     }),
     limiter: new RateLimiter({ tokensPerInterval: 1, interval: "second" })
   };

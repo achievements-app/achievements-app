@@ -7,8 +7,8 @@ import { db } from "@achievements-app/data-access-db";
 import { createGame, createUser } from "@achievements-app/utils-db";
 import {
   convertAchievementsListToMap,
-  generateRaAchievement,
   generateRaGameExtended,
+  generateRaGameExtendedAchievementEntity,
   generateRaGameExtendedAchievementEntityWithUserProgress,
   generateRaGameInfoAndUserProgress,
   generateRaUserGameCompletion,
@@ -531,8 +531,16 @@ describe("Service: RetroachievementsService", () => {
 
     const mockServiceTitleIds = ["12345"];
     const mockOriginalAchievements = [
-      generateRaAchievement({ id: 0, points: 10 }),
-      generateRaAchievement({ id: 1, points: 20 })
+      generateRaGameExtendedAchievementEntity({
+        title: "AAA",
+        id: 0,
+        points: 10
+      }),
+      generateRaGameExtendedAchievementEntity({
+        title: "BBB",
+        id: 1,
+        points: 20
+      })
     ];
 
     const mockServiceTitle = generateRaGameExtended({
@@ -554,10 +562,12 @@ describe("Service: RetroachievementsService", () => {
     const mockAchievements = [
       generateRaGameExtendedAchievementEntityWithUserProgress({
         ...(mockOriginalAchievements[0] as any),
+        title: "AAA",
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
       generateRaGameExtendedAchievementEntityWithUserProgress({
-        ...(mockOriginalAchievements[1] as any)
+        ...(mockOriginalAchievements[1] as any),
+        title: "BBB"
       })
     ];
 
@@ -581,10 +591,12 @@ describe("Service: RetroachievementsService", () => {
     const mockAllEarnedAchievementsList = [
       generateRaGameExtendedAchievementEntityWithUserProgress({
         ...(mockOriginalAchievements[0] as any),
+        title: "AAA",
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
       generateRaGameExtendedAchievementEntityWithUserProgress({
         ...(mockOriginalAchievements[1] as any),
+        title: "BBB",
         dateEarnedHardcore: new Date("2020-01-01").toISOString()
       })
     ];
@@ -643,9 +655,9 @@ describe("Service: RetroachievementsService", () => {
 
     const mockServiceTitleIds = ["12345"];
     const mockOriginalAchievements = [
-      generateRaAchievement({ id: 0, points: 10 }),
-      generateRaAchievement({ id: 1, points: 100 }),
-      generateRaAchievement({ id: 2, points: 10 })
+      generateRaGameExtendedAchievementEntity({ id: 0, points: 10 }),
+      generateRaGameExtendedAchievementEntity({ id: 1, points: 100 }),
+      generateRaGameExtendedAchievementEntity({ id: 2, points: 10 })
     ];
 
     const mockServiceTitle = generateRaGameExtended({

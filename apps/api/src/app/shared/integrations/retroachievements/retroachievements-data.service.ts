@@ -13,13 +13,17 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    const userCompletedGames =
-      await clientInstance.client.getUserGameCompletionStats(targetUserName);
+    const userCompletedGames = await raApi.getUserCompletedGames(
+      clientInstance.authObject,
+      {
+        userName: targetUserName
+      }
+    );
 
     // RetroAchievements returns each game potentially twice. This is because
     // softcore and hardcore mode are treated as separate games in their DB.
     // We'll filter out the softcore entries.
-    return userCompletedGames.filter((game) => game.hardcoreMode === 1);
+    return userCompletedGames.filter((game) => game.hardcoreMode);
   }
 
   async fetchDeepGameInfo(serviceTitleId: number | string) {

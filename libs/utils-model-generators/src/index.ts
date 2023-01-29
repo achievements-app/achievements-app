@@ -2,7 +2,6 @@ export * from "./lib/generateMappedCompleteGame";
 export * from "./lib/generateMappedGame";
 export * from "./lib/generateMappedGameAchievement";
 export * from "./lib/retroachievements/convertAchievementsListToMap";
-export * from "./lib/retroachievements/generateRaAchievement";
 export * from "./lib/retroachievements/generateRaGameExtended";
 export * from "./lib/retroachievements/generateRaGameExtendedAchievementEntity";
 export * from "./lib/retroachievements/generateRaGameExtendedAchievementWithUserProgress";
