@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { GameExtendedAchievementEntityWithUserProgress } from "@retroachievements/api";
 
 import type {
   MappedCompleteGame,
@@ -19,7 +20,7 @@ import { RetroachievementsDataService } from "./retroachievements-data.service";
 import { mapAchievementToMappedGameAchievement } from "./utils/mapAchievementToMappedGameAchievement";
 import { mapGameInfoExtendedToCompleteGame } from "./utils/mapGameInfoExtendedToCompleteGame";
 import { mapUserGameCompletionToStoredGame } from "./utils/mapUserGameCompletionToStoredGame";
-import { mapUserRecentlyPlayedGameToMappedGame } from "./utils/mapUserRecentlyPlayedGameToMappedGame";
+import { mapUserRecentlyPlayedGameEntityToMappedGame } from "./utils/mapUserRecentlyPlayedGameEntityToMappedGame";
 
 @Injectable()
 export class RetroachievementsService {
@@ -321,7 +322,9 @@ export class RetroachievementsService {
       (recentGame) => recentGame.numAchievedHardcore > 0
     );
 
-    return onlyWithSomeProgress.map(mapUserRecentlyPlayedGameToMappedGame);
+    return onlyWithSomeProgress.map(
+      mapUserRecentlyPlayedGameEntityToMappedGame
+    );
   }
 
   async #fetchUserGameUnlockedAchievements(
@@ -334,10 +337,26 @@ export class RetroachievementsService {
         serviceTitleId
       );
 
-    const earnedGameAchievements = gameInfoAndUserProgress.achievements.filter(
+    const flattenedAchievements = this.#flattenAchievements(
+      gameInfoAndUserProgress.achievements
+    );
+
+    const earnedGameAchievements = flattenedAchievements.filter(
       (achievement) => !!achievement.dateEarnedHardcore
     );
 
     return earnedGameAchievements.map(mapAchievementToMappedGameAchievement);
+  }
+
+  #flattenAchievements<T = GameExtendedAchievementEntityWithUserProgress>(
+    achievementsMap: Record<number, T>
+  ): T[] {
+    const flattened: T[] = [];
+
+    for (const [, achievement] of Object.entries(achievementsMap)) {
+      flattened.push(achievement);
+    }
+
+    return flattened;
   }
 }

@@ -1,22 +1,30 @@
-import type { GameInfoExtended } from "retroachievements-js";
+import type {
+  GameExtended,
+  GameExtendedAchievementEntity
+} from "@retroachievements/api";
 
 import type { MappedCompleteGame } from "@achievements-app/data-access-common-models";
 
 import { mapAchievementToMappedGameAchievement } from "./mapAchievementToMappedGameAchievement";
 
 export const mapGameInfoExtendedToCompleteGame = (
-  gameInfoExtended: GameInfoExtended
+  gameExtended: GameExtended
 ): MappedCompleteGame => {
+  const flattenedAchievements: GameExtendedAchievementEntity[] = [];
+  for (const achievement of Object.values(gameExtended.achievements)) {
+    flattenedAchievements.push(achievement);
+  }
+
   return {
-    name: gameInfoExtended.title as string,
-    gamePlatforms: [gameInfoExtended.consoleName as string],
+    name: gameExtended.title as string,
+    gamePlatforms: [gameExtended.consoleName as string],
     gamingService: "RA",
-    serviceTitleId: String(gameInfoExtended.id as number),
-    knownPlayerCount: gameInfoExtended.numDistinctPlayersHardcore,
-    coverImageUrl: gameInfoExtended.imageIcon
-      ? `https://retroachievements.org${gameInfoExtended.imageIcon}`
+    serviceTitleId: String(gameExtended.id as number),
+    knownPlayerCount: gameExtended.numDistinctPlayersHardcore,
+    coverImageUrl: gameExtended.imageIcon
+      ? `https://retroachievements.org${gameExtended.imageIcon}`
       : undefined,
-    achievements: gameInfoExtended.achievements.map(
+    achievements: flattenedAchievements.map(
       mapAchievementToMappedGameAchievement
     )
   };

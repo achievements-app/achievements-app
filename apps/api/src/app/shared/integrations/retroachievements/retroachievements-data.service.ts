@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import * as raApi from "@retroachievements/api";
 
 import type { RetroachievementsClientInstance } from "./models";
 import { initializeRetroAchievementsClientPool } from "./utils/initializeRetroAchievementsClientPool";
@@ -12,13 +13,17 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    const userCompletedGames =
-      await clientInstance.client.getUserGameCompletionStats(targetUserName);
+    const userCompletedGames = await raApi.getUserCompletedGames(
+      clientInstance.authObject,
+      {
+        userName: targetUserName
+      }
+    );
 
     // RetroAchievements returns each game potentially twice. This is because
     // softcore and hardcore mode are treated as separate games in their DB.
     // We'll filter out the softcore entries.
-    return userCompletedGames.filter((game) => game.hardcoreMode === 1);
+    return userCompletedGames.filter((game) => game.hardcoreMode);
   }
 
   async fetchDeepGameInfo(serviceTitleId: number | string) {
@@ -26,9 +31,9 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getExtendedGameInfoByGameId(
-      Number(serviceTitleId)
-    );
+    return raApi.getGameExtended(clientInstance.authObject, {
+      gameId: Number(serviceTitleId)
+    });
   }
 
   async fetchRecentUserGames(targetUserName: string) {
@@ -36,10 +41,10 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return await clientInstance.client.getUserRecentlyPlayedGames(
-      targetUserName,
-      50
-    );
+    return await raApi.getUserRecentlyPlayedGames(clientInstance.authObject, {
+      userName: targetUserName,
+      count: 50
+    });
   }
 
   async fetchUserGameProgress(
@@ -50,10 +55,10 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getUserProgressForGameId(
-      targetUserName,
-      Number(serviceTitleId)
-    );
+    return raApi.getGameInfoAndUserProgress(clientInstance.authObject, {
+      userName: targetUserName,
+      gameId: Number(serviceTitleId)
+    });
   }
 
   async fetchUserPoints(targetUserName: string) {
@@ -61,15 +66,9 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getUserPoints(targetUserName);
-  }
-
-  async fetchUserSummary(targetUserName: string) {
-    const clientInstance = this.#pickRandomClientFromPool(this.#clientPool);
-
-    await clientInstance.limiter.removeTokens(1);
-
-    return clientInstance.client.getUserSummary(targetUserName);
+    return raApi.getUserPoints(clientInstance.authObject, {
+      userName: targetUserName
+    });
   }
 
   // We use a very naive load balancing strategy here.

@@ -1,11 +1,22 @@
-import type { Achievement } from "retroachievements-js";
+import type {
+  GameExtendedAchievementEntity,
+  GameExtendedAchievementEntityWithUserProgress
+} from "@retroachievements/api";
 
 import type { MappedGameAchievement } from "@achievements-app/data-access-common-models";
 
 export const mapAchievementToMappedGameAchievement = (
-  achievement: Achievement
+  achievement:
+    | GameExtendedAchievementEntity
+    | GameExtendedAchievementEntityWithUserProgress
 ): MappedGameAchievement => {
+  let earnedOn: string | undefined;
+  if ("dateEarnedHardcore" in achievement && achievement?.dateEarnedHardcore) {
+    earnedOn = achievement.dateEarnedHardcore;
+  }
+
   return {
+    earnedOn,
     serviceAchievementId: String(achievement.id),
     name: achievement.title,
     description: String(achievement.description),
@@ -13,7 +24,6 @@ export const mapAchievementToMappedGameAchievement = (
     ratioPoints: achievement.trueRatio,
     sourceImageUrl: `https://media.retroachievements.org/Badge/${achievement.badgeName}.png`,
     knownEarnerCount: achievement.numAwardedHardcore ?? 0,
-    earnedOn: achievement?.dateEarnedHardcore?.toISOString() ?? undefined,
-    isEarned: achievement.dateEarnedHardcore ? true : false
+    isEarned: earnedOn ? true : false
   };
 };

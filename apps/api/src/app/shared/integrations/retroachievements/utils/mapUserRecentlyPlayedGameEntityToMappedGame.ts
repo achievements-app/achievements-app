@@ -1,9 +1,9 @@
-import { UserRecentlyPlayedGame } from "retroachievements-js";
+import type { UserRecentlyPlayedGameEntity } from "@retroachievements/api";
 
 import type { MappedGame } from "@achievements-app/data-access-common-models";
 
-export const mapUserRecentlyPlayedGameToMappedGame = (
-  userRecentlyPlayedGame: UserRecentlyPlayedGame
+export const mapUserRecentlyPlayedGameEntityToMappedGame = (
+  userRecentlyPlayedGame: UserRecentlyPlayedGameEntity
 ): MappedGame => {
   return {
     name: userRecentlyPlayedGame.title,

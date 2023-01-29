@@ -1,7 +1,8 @@
+import type { AuthObject } from "@retroachievements/api";
 import type { RateLimiter } from "limiter";
-import type { RetroAchievementsClient } from "retroachievements-js";
 
 export interface RetroachievementsClientInstance {
-  client: RetroAchievementsClient;
+  authObject: AuthObject;
+
   limiter: RateLimiter;
 }

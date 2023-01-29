@@ -27,6 +27,7 @@
     "@nestjs/schedule": "^2.1.0",
     "@ntegral/nestjs-sentry": "^4.0.0",
     "@prisma/client": "4.7.1",
+    "@retroachievements/api": "^1.0.0-rc.1",
     "@sentry/node": "^7.28.1",
     "@xboxreplay/xboxlive-api": "^3.4.3",
     "@xboxreplay/xboxlive-auth": "^4.0.0",
@@ -37,7 +38,6 @@
     "psn-api": "^2.8.3",
     "redis": "^4.5.1",
     "reflect-metadata": "^0.1.13",
-    "retroachievements-js": "^1.4.0",
     "rxjs": "^7.0.0",
     "tslib": "^2.3.0",
     "urlcat": "2.0.4"
