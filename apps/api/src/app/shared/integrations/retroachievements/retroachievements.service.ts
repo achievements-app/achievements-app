@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { GameExtendedAchievementEntityWithUserProgress } from "@retroachievements/api";
 
 import type {
   MappedCompleteGame,
@@ -336,10 +337,26 @@ export class RetroachievementsService {
         serviceTitleId
       );
 
-    const earnedGameAchievements = gameInfoAndUserProgress.achievements.filter(
+    const flattenedAchievements = this.#flattenAchievements(
+      gameInfoAndUserProgress.achievements
+    );
+
+    const earnedGameAchievements = flattenedAchievements.filter(
       (achievement) => !!achievement.dateEarnedHardcore
     );
 
     return earnedGameAchievements.map(mapAchievementToMappedGameAchievement);
+  }
+
+  #flattenAchievements<T = GameExtendedAchievementEntityWithUserProgress>(
+    achievementsMap: Record<number, T>
+  ): T[] {
+    const flattened: T[] = [];
+
+    for (const [, achievement] of Object.entries(achievementsMap)) {
+      flattened.push(achievement);
+    }
+
+    return flattened;
   }
 }

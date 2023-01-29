@@ -2,6 +2,8 @@
 
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { convertAchievementsListToMap } from "libs/utils-model-generators/src/lib/retroachievements/convertAchievementsListToMap";
+import { generateGameExtendedAchievementEntityWithUserProgress } from "libs/utils-model-generators/src/lib/retroachievements/generateGameExtendedAchievementWithUserProgress";
 
 import { db } from "@achievements-app/data-access-db";
 import { createGame, createUser } from "@achievements-app/utils-db";
@@ -549,20 +551,20 @@ describe("Service: RetroachievementsService", () => {
         mockServiceTitleIds
       );
 
+    const mockAchievements = [
+      generateGameExtendedAchievementEntityWithUserProgress({
+        ...(mockOriginalAchievements[0] as any),
+        dateEarnedHardcore: new Date("2020-01-01").toISOString()
+      }),
+      generateGameExtendedAchievementEntityWithUserProgress({
+        ...(mockOriginalAchievements[1] as any)
+      })
+    ];
+
     jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
       generateRaGameInfoAndUserProgress({
         id: Number(mockServiceTitleIds[0]),
-        achievements: [
-          generateRaAchievement({
-            ...mockOriginalAchievements[0],
-            isAwarded: 1,
-            dateEarnedHardcore: new Date("2020-01-01")
-          }),
-          generateRaAchievement({
-            ...mockOriginalAchievements[1],
-            isAwarded: 0
-          })
-        ]
+        achievements: convertAchievementsListToMap(mockAchievements)
       })
     );
 
@@ -577,22 +579,22 @@ describe("Service: RetroachievementsService", () => {
     // ACT
     // Now we'll have them unlock 1 more achievement.
     const mockAllEarnedAchievementsList = [
-      generateRaAchievement({
-        ...mockOriginalAchievements[0],
-        isAwarded: 1,
-        dateEarnedHardcore: new Date("2020-01-01")
+      generateGameExtendedAchievementEntityWithUserProgress({
+        ...(mockOriginalAchievements[0] as any),
+        dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
-      generateRaAchievement({
-        ...mockOriginalAchievements[1],
-        isAwarded: 1,
-        dateEarnedHardcore: new Date("2020-01-01")
+      generateGameExtendedAchievementEntityWithUserProgress({
+        ...(mockOriginalAchievements[1] as any),
+        dateEarnedHardcore: new Date("2020-01-01").toISOString()
       })
     ];
 
     jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
       generateRaGameInfoAndUserProgress({
         id: Number(mockServiceTitleIds[0]),
-        achievements: mockAllEarnedAchievementsList
+        achievements: convertAchievementsListToMap(
+          mockAllEarnedAchievementsList
+        )
       })
     );
 
@@ -643,7 +645,7 @@ describe("Service: RetroachievementsService", () => {
     const mockOriginalAchievements = [
       generateRaAchievement({ id: 0, points: 10 }),
       generateRaAchievement({ id: 1, points: 100 }),
-      generateRaAchievement({ id: 2, points: 50 })
+      generateRaAchievement({ id: 2, points: 10 })
     ];
 
     const mockServiceTitle = generateRaGameInfoExtended({
@@ -662,24 +664,34 @@ describe("Service: RetroachievementsService", () => {
         mockServiceTitleIds
       );
 
+    const mockAchievements = [
+      generateGameExtendedAchievementEntityWithUserProgress({
+        id: mockOriginalAchievements[0].id,
+        title: mockOriginalAchievements[0].title,
+        description: mockOriginalAchievements[0].description,
+        points: 10,
+        dateEarnedHardcore: new Date("2020-01-01").toISOString()
+      }),
+      generateGameExtendedAchievementEntityWithUserProgress({
+        id: mockOriginalAchievements[1].id,
+        title: mockOriginalAchievements[1].title,
+        description: mockOriginalAchievements[1].description,
+        dateEarnedHardcore: undefined,
+        points: 100
+      }),
+      generateGameExtendedAchievementEntityWithUserProgress({
+        id: mockOriginalAchievements[2].id,
+        title: mockOriginalAchievements[2].title,
+        description: mockOriginalAchievements[2].description,
+        dateEarnedHardcore: undefined,
+        points: 10
+      })
+    ];
+
     jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
       generateRaGameInfoAndUserProgress({
         id: Number(mockServiceTitleIds[0]),
-        achievements: [
-          generateRaAchievement({
-            ...mockOriginalAchievements[0],
-            isAwarded: 1,
-            dateEarnedHardcore: new Date("2020-01-01")
-          }),
-          generateRaAchievement({
-            ...mockOriginalAchievements[1],
-            isAwarded: 0
-          }),
-          generateRaAchievement({
-            ...mockOriginalAchievements[2],
-            isAwarded: 0
-          })
-        ]
+        achievements: convertAchievementsListToMap(mockAchievements)
       })
     );
 
@@ -694,23 +706,36 @@ describe("Service: RetroachievementsService", () => {
     // ACT
     // Now we'll have them unlock 1 more achievement.
     const mockAllEarnedAchievementsList = [
-      generateRaAchievement({
-        ...mockOriginalAchievements[0],
-        isAwarded: 1,
-        dateEarnedHardcore: new Date("2020-01-01")
+      generateGameExtendedAchievementEntityWithUserProgress({
+        id: mockOriginalAchievements[0].id,
+        title: mockOriginalAchievements[0].title,
+        description: mockOriginalAchievements[0].description,
+
+        points: 10,
+        dateEarnedHardcore: new Date("2020-01-01").toISOString()
       }),
-      generateRaAchievement({
-        ...mockOriginalAchievements[1],
-        isAwarded: 1,
-        dateEarnedHardcore: new Date("2020-01-01")
+      generateGameExtendedAchievementEntityWithUserProgress({
+        id: mockOriginalAchievements[1].id,
+        title: mockOriginalAchievements[1].title,
+        description: mockOriginalAchievements[1].description,
+        dateEarnedHardcore: new Date("2020-01-01").toISOString(),
+        points: 100
       }),
-      generateRaAchievement({ ...mockOriginalAchievements[2], isAwarded: 0 })
+      generateGameExtendedAchievementEntityWithUserProgress({
+        id: mockOriginalAchievements[2].id,
+        title: mockOriginalAchievements[2].title,
+        description: mockOriginalAchievements[2].description,
+        points: 10,
+        dateEarnedHardcore: undefined
+      })
     ];
 
     jest.spyOn(dataService, "fetchUserGameProgress").mockResolvedValueOnce(
       generateRaGameInfoAndUserProgress({
         id: Number(mockServiceTitleIds[0]),
-        achievements: mockAllEarnedAchievementsList
+        achievements: convertAchievementsListToMap(
+          mockAllEarnedAchievementsList
+        )
       })
     );
 

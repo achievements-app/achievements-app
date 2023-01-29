@@ -51,10 +51,10 @@ export class RetroachievementsDataService {
 
     await clientInstance.limiter.removeTokens(1);
 
-    return clientInstance.client.getUserProgressForGameId(
-      targetUserName,
-      Number(serviceTitleId)
-    );
+    return raApi.getGameInfoAndUserProgress(clientInstance.authObject, {
+      userName: targetUserName,
+      gameId: Number(serviceTitleId)
+    });
   }
 
   async fetchUserPoints(targetUserName: string) {
