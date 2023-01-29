@@ -109,7 +109,7 @@ export class DbService implements OnModuleInit {
                 return {
                   gameAchievementId: foundStoredGameAchievement.id,
                   // TODO: is this timezone okay?
-                  earnedOn: achievement.earnedOn
+                  earnedOn: new Date(achievement.earnedOn)
                 };
               } catch (error) {
                 this.#logger.error(
@@ -575,7 +575,7 @@ export class DbService implements OnModuleInit {
               return {
                 gameAchievementId: storedGameAchievement.id,
                 // TODO: #RA is this timezone okay?
-                earnedOn: achievement.earnedOn
+                earnedOn: new Date(achievement.earnedOn)
               };
             })
           }
