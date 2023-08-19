@@ -24,7 +24,9 @@ export class SyncQueueingService {
     }
 
     if (trackedAccount.gamingService === "RA") {
-      return this.beginRetroachievementsAccountSync(trackedAccount, depth);
+      // Do nothing.
+      // This is because of the ongoing RA API issues.
+      // return this.beginRetroachievementsAccountSync(trackedAccount, depth);
     }
 
     if (trackedAccount.gamingService === "XBOX") {
@@ -51,6 +53,9 @@ export class SyncQueueingService {
     trackedAccount: TrackedAccount,
     depth?: "partial" | "full"
   ) {
+    // Do nothing.
+    return;
+
     const payload: SyncUserGamesPayload = {
       trackedAccount,
       syncKind: depth
