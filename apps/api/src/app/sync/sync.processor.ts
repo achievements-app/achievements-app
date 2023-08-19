@@ -105,6 +105,9 @@ export class SyncProcessor extends BaseProcessor {
   async processSyncRetroachievementsUserGameProgress(
     job: Job<SyncUserGameProgressPayload>
   ) {
+    // Do nothing while the API is down.
+    return;
+
     // We'll either be updating an existing userGameProgress
     // entity or creating an entirely new one.
     const foundUserGameProgress = await this.dbService.findThinUserGameProgress(
