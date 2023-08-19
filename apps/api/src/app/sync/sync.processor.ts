@@ -37,6 +37,9 @@ export class SyncProcessor extends BaseProcessor {
     concurrency: 2
   })
   async processSyncRetroachievementsUserGames(job: Job<SyncUserGamesPayload>) {
+    // Do nothing while the API is down.
+    return;
+
     // If we're not missing any points for the user, we don't even need
     // to bother with continuing on. We can stop right here to save on
     // compute and bandwidth.
